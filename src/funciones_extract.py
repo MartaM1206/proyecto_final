@@ -4,7 +4,7 @@ import os
 import zipfile
 import pandas as pd
 
-def descargar_datos_cmadrid(url, formato = None, mes = False, dia = False):
+def descargar_datos_cmadrid(url, carpeta_salida, formato = None, mes = False, dia = False):
     """
     Descarga archivos de datos desde una URL de la Comunidad de Madrid y los guarda localmente.
 
@@ -13,6 +13,7 @@ def descargar_datos_cmadrid(url, formato = None, mes = False, dia = False):
         formato (str, opcional): Formato específico de los archivos a descargar (ejemplo: "csv", "json").
         mes (bool, opcional): Si es True, el archivo incluirá el mes y el año actual en el nombre.
         dia (bool, opcional): Si es True, el archivo incluirá la fecha completa actual en el nombre.
+        carpeta_salida (str): Ruta de la carpeta donde se guardarán los archivos descargados.
 
     Retorna:
         list: Lista con los nombres de los archivos descargados correctamente.
@@ -45,11 +46,11 @@ def descargar_datos_cmadrid(url, formato = None, mes = False, dia = False):
                 if response.status_code == 200:
                     # Especificamos nombre del archivo según los parámetros introducidos
                     if not mes and not dia: # si no hay mes ni dia
-                        nombre = f'../data/cmadrid_{nombre}.{formato_archivo}'
+                        nombre = f'{carpeta_salida}/cmadrid_{nombre}.{formato_archivo}'
                     elif mes and not dia: # si hay mes pero no dia
-                        nombre = f'../data/cmadrid_{hoy.year}_{hoy.month}.{formato_archivo}'
+                        nombre = f'{carpeta_salida}/cmadrid_{hoy.year}_{hoy.month}.{formato_archivo}'
                     elif dia and not mes: #si hay dia pero no mes
-                        nombre = f'../data/cmadrid_{hoy}.{formato_archivo}'
+                        nombre = f'{carpeta_salida}/cmadrid_{hoy}.{formato_archivo}'
                     # Guardamos el archivo localmente
                     with open(nombre, 'wb') as file:
                         file.write(response.content) 
@@ -62,14 +63,15 @@ def descargar_datos_cmadrid(url, formato = None, mes = False, dia = False):
 
 
 
-def descargar_datos_madrid(url):
+def descargar_datos_madrid(url, carpeta_salida):
     """
     Descarga archivos de calidad del aire desde la API del Ayuntamiento de Madrid.
     
     Parámetros:
     - url (str): URL de la API donde se encuentran los datos de calidad del aire.
+    - carpeta_salida (str): Ruta de la carpeta donde se guardarán los archivos descargados.
 
-    La función consulta la API, filtra los archivos relevantes y los guarda en la carpeta `../datos/`.
+    La función consulta la API, filtra los archivos relevantes y los guarda en la carpeta indicada
     """
     # Obtenemos la fecha actual
     hoy =  datetime.now().date()  
@@ -92,7 +94,7 @@ def descargar_datos_madrid(url):
                         print(f"Descargando: {archivo} como madrid_{elemento["title"]}.{formato}")
                         response_est = requests.get(archivo)
                         if response_est.status_code == 200:
-                            with open(f'../datos/madrid_{elemento["title"]}.{formato}', 'wb') as file:
+                            with open(f'{carpeta_salida}/madrid_{elemento["title"]}.{formato}', 'wb') as file:
                                 file.write(response_est.content)
                                 print("Archivo guardado exitosamente.")
                         else:
@@ -108,7 +110,7 @@ def descargar_datos_madrid(url):
                         print(f"Descargando: {archivo} como madrid_{elemento["title"]}.{formato}")
                         response_tra = requests.get(archivo)
                         if response_tra.status_code == 200:
-                            with open(f'../datos/madrid_{hoy}.{formato}', 'wb') as file:
+                            with open(f'{carpeta_salida}/madrid_{hoy}.{formato}', 'wb') as file:
                                 file.write(response_tra.content)
                                 print("Archivo guardado exitosamente.")
                         else:
@@ -124,7 +126,7 @@ def descargar_datos_madrid(url):
                     print(f"Descargando: {archivo} como madrid_{i["title"]}.{formato}")
                     response_dh = requests.get(archivo)
                     if response_dh.status_code == 200:
-                        with open(f'../datos/madrid_{i["title"]}.{formato}', 'wb') as file:
+                        with open(f'{carpeta_salida}/madrid_{i["title"]}.{formato}', 'wb') as file:
                             file.write(response_dh.content)
                             archivos_dh.append(i["title"])
                             print("Archivo guardado exitosamente.")

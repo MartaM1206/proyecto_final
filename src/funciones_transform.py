@@ -2,7 +2,7 @@
 import pandas as pd
 import numpy as np
 import os
-
+from unidecode import unidecode
 
 def unir_archivos(carpeta_entrada, patron_nombre, carpeta_salida, nombre_salida):
     """
@@ -18,12 +18,13 @@ def unir_archivos(carpeta_entrada, patron_nombre, carpeta_salida, nombre_salida)
         archivos: Lista con los nombres de los archivos unidos.
     """
     carpeta = carpeta_entrada
-    archivos = [archivo for archivo in os.listdir(carpeta) if patron_nombre.lower() in archivo.lower()]
+    archivos = [archivo for archivo in os.listdir(carpeta) if archivo.lower().startswith(patron_nombre.lower())]
     df_lista = [pd.read_csv(os.path.join(carpeta, archivo), sep=";", parse_dates = True, encoding="latin1") for archivo in archivos]
     print (archivos)
     df_unido = pd.concat(df_lista, ignore_index=True)
     df_unido.to_csv(f"{carpeta_salida}/{nombre_salida}.csv", index=False)
     print(f"archivo {nombre_salida}.csv creado en {carpeta_salida}")
+    return df_unido
 
 
 def combinar_h_v(df):
@@ -103,4 +104,40 @@ def formato_df(df):
     #creamos un id de la medida único para cada fila (estacion, contaminante, fecha y hora)
     df["id_medida"] = df["punto_muestreo"] + "_" + df["fecha"] + "_" + df["hora"] + "_" + df["validacion"]
     
+    return df
+
+def formato_df_madrid(df):
+    """
+    Formatea el DataFrame de Madrid para que tenga el mismo formato que el de la Comunidad de Madrid.
+
+    Args:
+        df (pd.DataFrame): DataFrame original de Madrid.
+
+    Returns:
+        pd.DataFrame: DataFrame formateado.
+    """
+   
+    # eliminamos duplicados
+    df.drop_duplicates(inplace=True)
+    # eliminamos una columna con muchos nulos
+    df = df.drop('ï»¿PROVINCIA', axis=1)
+    # pasamos todos los encabezdos a minúsculas
+    df.columns = df.columns.str.lower()
+    # añadimos la columna de provincia al principio
+    df.insert(0, "provincia", 28)
+    return df
+
+def formato_contaminantes(df):
+    """
+    Formatea el DataFrame de contaminantes para que tenga el formato adecuado.
+
+    Args:
+        df (pd.DataFrame): DataFrame original de contaminantes.
+
+    Returns:
+        pd.DataFrame: DataFrame formateado.
+    """
+    # cambiamos el nombre de las columnas a snake_case y quitamos las tildes
+    df.columns = df.columns.str.lower().str.replace(" ", "_")
+    df.columns = df.columns.map(unidecode)
     return df

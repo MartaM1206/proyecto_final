@@ -1,32 +1,49 @@
 CREATE TABLE contaminantes (
-    id_contaminante INT PRIMARY KEY,
+    id_contaminante VARCHAR(50) PRIMARY KEY,
     nombre_contaminante TEXT,
     unidad_contaminante TEXT,
     descripcion_unidad TEXT,
-    codigo_tecnica_de_medida INT,
+    codigo_tecnica_de_medida VARCHAR(50),
     descripcion_tecnica_de_medida TEXT
 );
 
+CREATE TABLE provincias (
+    id_provincia VARCHAR(50) PRIMARY KEY,
+    nombre_provincia TEXT
+);
+
+CREATE TABLE municipios (
+    id_municipio VARCHAR(50) PRIMARY KEY,
+    nombre_municipio TEXT,
+    id_provincia INT REFERENCES provincias(id_provincia)
+);
+
+CREATE TABLE zonas (
+    id_municipio VARCHAR(50) PRIMARY KEY,
+    descripcion TEXT
+); 
+
 CREATE TABLE estaciones (
-    id_estacion INT PRIMARY KEY,
+    id_estacion VARCHAR(50) PRIMARY KEY,
     nombre_estacion TEXT,
-    municipio VARCHAR(255),
+    municipio VARCHAR(50) REFERENCES municipios(id_municipio)
     direccion TEXT,
     latitud DECIMAL(9, 6),
     longitud DECIMAL(9, 6),
-    id_zona VARCHAR(50)
+    altitud INT,
+    zona VARCHAR(50) REFERENCES zonas(id_zona)
 );
 
+
 CREATE TABLE medidas (
-    provincia INT,
-    municipio INT,
-    estacion INT,
-    magnitud INT,
+    id_medida TEXT PRIMARY KEY
+    estacion VARCHAR(50) REFERENCES estaciones(id_estacion),
+    contaminante VARCHAR(25) REFERENCES contaminantes(id_contaminante),
     punto_muestreo TEXT,
     fecha TEXT,
     hora TEXT,
-    valor TEXT,
+    valor DECIMAL(5, 3),
     fecha_hora_f TIMESTAMP,
     validacion TEXT,
-    id_medida TEXT PRIMARY KEY
 );
+

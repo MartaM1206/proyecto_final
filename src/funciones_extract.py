@@ -3,6 +3,7 @@ from datetime import datetime
 import os
 import zipfile
 import pandas as pd
+import camelot
 
 def descargar_datos_cmadrid(url, carpeta_salida, formato = None, mes = False, dia = False):
     """
@@ -183,3 +184,40 @@ def procesar_zips(ruta_entrada, lista_archivos, ruta_guardado):
         # Eliminar el archivo ZIP
         os.remove(ruta_zip)
         print(f"Archivo ZIP eliminado: {ruta_zip}")
+
+
+
+
+def extraer_tabla_pdf(archivo_pdf, pagina, carpeta_salida):
+    """
+    Extrae la primera tabla de una página específica de un archivo PDF y la guarda como CSV.
+
+    Args:
+        archivo_pdf (str): Ruta del archivo PDF del cual se extraerán los datos.
+        pagina (str): Número de la página donde se encuentra la tabla a extraer.
+        carpeta_salida (str): Ruta donde se guardará el archivo CSV.
+
+    Returns:
+        bool: True si se extrajo y guardó la tabla correctamente, False si no se encontraron tablas.
+
+    Raises:
+        FileNotFoundError: Si el archivo PDF no existe.
+        Exception: Para errores inesperados en la extracción de la tabla.
+    """
+    try:
+        # Extraer tablas de la página indicada
+        tablas = camelot.read_pdf(archivo_pdf, pages=pagina)
+
+        # Verificar si se extrajeron tablas
+        if len(tablas) > 0:
+            tablas[0].to_csv(f"{carpeta_salida}/tabla_contaminantes.csv")  # Guardar la primera tabla como CSV
+            print(f"✅ Tabla guardada en {carpeta_salida}")
+            return True
+        else:
+            print("⚠️ No se encontraron tablas en la página indicada.")
+            return False
+
+    except FileNotFoundError:
+        print(f"❌ Error: No se encontró el archivo {archivo_pdf}")
+    except Exception as e:
+        print(f"❌ Error inesperado: {e}")

@@ -18,11 +18,11 @@ def unir_archivos(carpeta_entrada, patron_nombre, carpeta_salida, nombre_salida)
         archivos: Lista con los nombres de los archivos unidos.
     """
     carpeta = carpeta_entrada
-    archivos = [archivo for archivo in os.listdir(carpeta) if archivo.lower().startswith(patron_nombre.lower())]
+    archivos = [archivo for archivo in os.listdir(carpeta) if patron_nombre.lower() in archivo.lower()]
     df_lista = [pd.read_csv(os.path.join(carpeta, archivo), sep=";", parse_dates = True, encoding="latin1") for archivo in archivos]
     print (archivos)
     df_unido = pd.concat(df_lista, ignore_index=True)
-    df_unido.to_csv(f"{carpeta_salida}/{nombre_salida}.csv", index=False)
+    df_unido.to_parquet(f"{carpeta_salida}/{nombre_salida}.parquet", index=False)
     print(f"archivo {nombre_salida}.csv creado en {carpeta_salida}")
     return df_unido
 
@@ -57,53 +57,76 @@ def formato_df(df):
     Formatea un DataFrame con datos de calidad del aire, asegurando un formato homogéneo y estructurado.
 
     Pasos realizados:
-    1. Convierte las columnas de año, mes y día a tipo string.
+    1. Convierte las columnas "ano", "mes" y "dia" a tipo string.
     2. Rellena los valores de mes y día para que tengan siempre dos dígitos.
     3. Crea una nueva columna "fecha" combinando año, mes y día.
     4. Une las columnas de hora y validación mediante la función `combinar_h_v()`.
     5. Transforma las columnas de hora en filas mediante `pd.melt()`.
     6. Separa la validación del valor y deja únicamente la hora en la columna "hora".
-    7. Ajusta el valor "24" en la hora a "23:59" y añade ":00" en las demás horas.
+    7. Ajusta el valor "24" en la columna "hora" a "23:59" y añade ":00" en las demás horas.
     8. Crea una columna "fecha_hora_f" en formato datetime.
-    9. Extrae el estado de validación de la medida.
-    10. Crea un identificador único "id_medida" para cada observación.
+    9. Extrae el estado de validación de la medida desde la columna "valor".
+    10. **Corrige los valores con comas decimales**, reemplazando `,` por `.` en la columna "valor".
+    11. Convierte la columna "valor" a tipo float para realizar operaciones numéricas.
+    12. Crea un identificador único "id_medida" para cada observación.
+    13. Une "provincia", "municipio" y "estacion" en "codigo_estacion" con formato estandarizado.
 
     Args:
         df : pd.DataFrame
-        DataFrame con los datos de calidad del aire.
+            DataFrame con los datos de calidad del aire.
 
     Returns:
         pd.DataFrame
-        DataFrame formateado con la estructura correcta.
+            DataFrame formateado con la estructura correcta.
     """
-    # nos aseguramos de que las columnas de fecha son str
-    df[["ano", "mes", "dia"]] = (df[["ano", "mes", "dia"]]).astype(str)
-    # rellenamos mes y dia para que siempre tengan 2 dígitos
+    # Nos aseguramos de que las columnas de fecha sean str
+    df[["ano", "mes", "dia"]] = df[["ano", "mes", "dia"]].astype(str)
+
+    # Rellenamos mes y día para que siempre tengan 2 dígitos
     df["mes"] = df["mes"].str.zfill(2)
     df["dia"] = df["dia"].str.zfill(2)
-    # creamos la columna de fecha
+
+    # Creamos la columna de fecha
     df["fecha"] = df["ano"] + "-" + df["mes"] + "-" + df["dia"]
-    # combinamos las columnas de hora y validacion  
+
+    # Combinamos las columnas de hora y validación
     df, columnas_creadas = combinar_h_v(df)
-    # transformamos el df para que las columnas de hora queden en filas
+
+    # Transformamos el DataFrame para que las columnas de hora queden en filas
     df = df.melt(
-        id_vars = ["provincia", "municipio", "estacion", "magnitud", "punto_muestreo", "fecha"],  # Columnas que no se transforman
-        value_vars = columnas_creadas,  # Columnas de horas que queremos transformar
-        var_name = "hora",  # Nombre de la nueva columna que contiene las etiquetas de hora
-        value_name = "valor"  # Nombre de la nueva columna que contiene los valores de las medidas
-        )
-    # ahora separamos la letra que acompaña al valor para crear la columna de validación y dejamos solo la hora en la columna hora
-    df["hora"] = df["hora"].str.split("_", expand = True)[0].str.extract("(\\d+)")[0]
-    # como tenemos un valor 24 para la hora y no lo admite datetime, lo sustituimos por 23:59 y añadimos un :00 en las demás horas
+        id_vars=["provincia", "municipio", "estacion", "magnitud", "punto_muestreo", "fecha"],
+        value_vars=columnas_creadas,
+        var_name="hora",
+        value_name="valor"
+    )
+
+    # Ahora separamos la letra que acompaña al valor para crear la columna de validación y dejamos solo la hora
+    df["hora"] = df["hora"].str.split("_", expand=True)[0].str.extract("(\\d+)")[0]
+
+    # Ajustamos el formato de la hora para casos especiales
     df["hora"] = df["hora"].apply(lambda x: '23:59' if x == '24' else f"{str(x)}:00")
-    # creamos una columna de fecha y hora con formato datetime para poder hacer operaciones con ella
+
+    # Creamos una columna de fecha y hora con formato datetime
     df["fecha_hora_f"] = pd.to_datetime(df["fecha"].astype(str) + " " + df["hora"].astype(str))
-    # obtenemos el estado de validación de la medida a partir de la columna de valor
-    df["validacion"] = df["valor"].str.split(" ", expand = True)[1]
-    df["valor"] = df["valor"].str.split(" ", expand = True)[0]
-    #creamos un id de la medida único para cada fila (estacion, contaminante, fecha y hora)
+
+    # Extraemos el estado de validación de la medida
+    df["validacion"] = df["valor"].str.split(" ", expand=True)[1]
+    df["valor"] = df["valor"].str.split(" ", expand=True)[0]
+
+    # **Corrige los valores con comas decimales antes de convertir a float**
+    df["valor"] = df["valor"].str.replace(",", ".")  # Reemplaza comas por puntos en decimales
+
+    # Convertimos "valor" a float
+    df["valor"] = df["valor"].astype(float)
+
+    # Creamos un id único para cada medida
     df["id_medida"] = df["punto_muestreo"] + "_" + df["fecha"] + "_" + df["hora"] + "_" + df["validacion"]
-    
+
+    # Formamos el código de estación
+    df["codigo_estacion"] = df["provincia"].astype(str).str.zfill(2) + \
+                            df["municipio"].astype(str).str.zfill(3) + \
+                            df["estacion"].astype(str).str.zfill(3)
+
     return df
 
 def formato_df_madrid(df):

@@ -6,7 +6,7 @@ from unidecode import unidecode
 
 def unir_archivos(carpeta_entrada, patron_nombre, carpeta_salida, nombre_salida):
     """
-    Une los archivos de una carpera según el nombre dado y los guarda como un único csv en la carpeta de salida
+    Une los archivos de una carpera según el nombre dado y los guarda como un único parquet en la carpeta de salida
 
     Parámetros:
         carpeta_entrada (str): ruta de la carpeta donde se encuentran los archivos que queremos unir.
@@ -18,12 +18,12 @@ def unir_archivos(carpeta_entrada, patron_nombre, carpeta_salida, nombre_salida)
         archivos: Lista con los nombres de los archivos unidos.
     """
     carpeta = carpeta_entrada
-    archivos = [archivo for archivo in os.listdir(carpeta) if patron_nombre.lower() in archivo.lower()]
-    df_lista = [pd.read_csv(os.path.join(carpeta, archivo), sep=";", parse_dates = True, encoding="latin1") for archivo in archivos]
+    archivos = [archivo for archivo in os.listdir(carpeta) if archivo.lower().startswith(patron_nombre.lower())]
+    df_lista = [pd.read_csv(os.path.join(carpeta, archivo), sep=";", parse_dates = True, encoding="latin1", low_memory = False) for archivo in archivos]
     print (archivos)
     df_unido = pd.concat(df_lista, ignore_index=True)
     df_unido.to_parquet(f"{carpeta_salida}/{nombre_salida}.parquet", index=False)
-    print(f"archivo {nombre_salida}.csv creado en {carpeta_salida}")
+    print(f"archivo {nombre_salida}.parquet creado en {carpeta_salida}")
     return df_unido
 
 
@@ -57,7 +57,7 @@ def formato_df(df):
     Formatea un DataFrame con datos de calidad del aire, asegurando un formato homogéneo y estructurado.
 
     Pasos realizados:
-    1. Convierte las columnas "ano", "mes" y "dia" a tipo string.
+    1. Convierte las columnas "provincia", "municipio", "estacion", "magnitud", "ano", "mes" y "dia" a tipo string.
     2. Rellena los valores de mes y día para que tengan siempre dos dígitos.
     3. Crea una nueva columna "fecha" combinando año, mes y día.
     4. Une las columnas de hora y validación mediante la función `combinar_h_v()`.
@@ -66,10 +66,11 @@ def formato_df(df):
     7. Ajusta el valor "24" en la columna "hora" a "23:59" y añade ":00" en las demás horas.
     8. Crea una columna "fecha_hora_f" en formato datetime.
     9. Extrae el estado de validación de la medida desde la columna "valor".
-    10. **Corrige los valores con comas decimales**, reemplazando `,` por `.` en la columna "valor".
+    10. Corrige los valores con comas decimales, reemplazando `,` por `.` en la columna "valor".
     11. Convierte la columna "valor" a tipo float para realizar operaciones numéricas.
     12. Crea un identificador único "id_medida" para cada observación.
     13. Une "provincia", "municipio" y "estacion" en "codigo_estacion" con formato estandarizado.
+    14. Elimina las filas con valores nulos.
 
     Args:
         df : pd.DataFrame
@@ -79,6 +80,8 @@ def formato_df(df):
         pd.DataFrame
             DataFrame formateado con la estructura correcta.
     """
+    # Pasamos las columnas de "provincia", "municipio", "estacion" y "magnitud" a str porque no vamos a operar con esos números
+    df[["provincia", "municipio", "estacion", "magnitud"]] = df[["provincia", "municipio", "estacion", "magnitud"]].astype(str)
     # Nos aseguramos de que las columnas de fecha sean str
     df[["ano", "mes", "dia"]] = df[["ano", "mes", "dia"]].astype(str)
 
@@ -113,7 +116,7 @@ def formato_df(df):
     df["validacion"] = df["valor"].str.split(" ", expand=True)[1]
     df["valor"] = df["valor"].str.split(" ", expand=True)[0]
 
-    # **Corrige los valores con comas decimales antes de convertir a float**
+    # Corrige los valores con comas decimales antes de convertir a float
     df["valor"] = df["valor"].str.replace(",", ".")  # Reemplaza comas por puntos en decimales
 
     # Convertimos "valor" a float
@@ -126,7 +129,7 @@ def formato_df(df):
     df["codigo_estacion"] = df["provincia"].astype(str).str.zfill(2) + \
                             df["municipio"].astype(str).str.zfill(3) + \
                             df["estacion"].astype(str).str.zfill(3)
-
+    df = df.dropna()
     return df
 
 def formato_df_madrid(df):

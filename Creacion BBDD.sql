@@ -5,7 +5,7 @@ CREATE TABLE provincias (
 
 CREATE TABLE municipios (
     codigo_municipio VARCHAR(10) PRIMARY KEY,
-    nombre_municipio TEXT,
+    municipio TEXT,
     codigo_provincia VARCHAR(10) REFERENCES provincias(codigo_provincia)
 );
 
@@ -15,9 +15,9 @@ CREATE TABLE contaminantes (
     unidad TEXT,
     descripcion_unidad TEXT
 );
- 
+
 CREATE TABLE tecnicas_medida (
-    codigo_tecnica_de_medida VARCHAR(10) primary KEY,
+    codigo_tecnica_de_medida VARCHAR(10) PRIMARY KEY,
  	descripcion_tecnica_de_medida TEXT
 );
 
@@ -28,13 +28,13 @@ CREATE TABLE zonas (
 
 CREATE TABLE estaciones (
     codigo_estacion VARCHAR(20) PRIMARY KEY,
-    fecha_alta DATE,
+    fecha_alta TIMESTAMP,
     tipo_area VARCHAR(50),
     tipo_estacion VARCHAR(50),
     subarea_rural VARCHAR(50),
     direccion TEXT,
-    coord_latitud DECIMAL(9, 6),
-    coord_longitud DECIMAL(9, 6),
+    latitud DECIMAL(9, 6),
+    longitud DECIMAL(9, 6),
     altitud INT,
     analizador_NO BOOL,
     analizador_NO2 BOOL,
@@ -65,7 +65,7 @@ CREATE TABLE medidas (
     fecha_hora_f TIMESTAMP,
     validacion TEXT,
     id_medida VARCHAR(75) PRIMARY KEY,
-    codigo_estacion VARCHAR(20) REFERENCES estaciones(codigo_estacion)
+    codigo_estacion VARCHAR(20) REFERENCES estaciones(codigo_estacion),
     codigo_tecnica VARCHAR(10) REFERENCES tecnicas_medida(codigo_tecnica_de_medida)
 );
 
@@ -75,7 +75,7 @@ CREATE TABLE medidas (
 CREATE OR REPLACE FUNCTION reemplazar_medida()
 RETURNS TRIGGER AS $$
 BEGIN
-    DELETE FROM mediciones
+    DELETE FROM medidas
     WHERE LEFT(NEW.id_medida, LENGTH(NEW.id_medida)-1) = LEFT(id_medida, LENGTH(id_medida)-1)
     AND RIGHT(id_medida, 1) IN ('N', 'T');
 
@@ -85,7 +85,7 @@ $$ LANGUAGE plpgsql;
 
 -- Crear el trigger que ejecuta la función antes de insertar un nuevo id_medida terminado en V
 CREATE TRIGGER trigger_reemplazo_medida
-BEFORE INSERT ON mediciones
+BEFORE INSERT ON medidas
 FOR EACH ROW
 WHEN (RIGHT(NEW.id_medida, 1) = 'V')
 EXECUTE FUNCTION reemplazar_medida();

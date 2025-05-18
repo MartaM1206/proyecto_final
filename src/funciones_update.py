@@ -5,13 +5,14 @@ import zipfile
 import pandas as pd
 import camelot
 
-def descargar_datos_cmadrid(url, carpeta_salida, formato = None, mes = False, dia = False):
+def actualizar_datos_cmadrid(url, carpeta_salida, formato=None, ano=False, mes=False, dia=False):
     """
     Descarga archivos de datos desde una URL de la Comunidad de Madrid y los guarda localmente.
 
     Parámetros:
         url (str): URL de la API desde donde se obtendrán los datos.
         formato (str, opcional): Formato específico de los archivos a descargar (ejemplo: "csv", "json").
+        ano (bool, opcional): Si es True, el archivo incluirá solo el año actual en el nombre.
         mes (bool, opcional): Si es True, el archivo incluirá el mes y el año actual en el nombre.
         dia (bool, opcional): Si es True, el archivo incluirá la fecha completa actual en el nombre.
         carpeta_salida (str): Ruta de la carpeta donde se guardarán los archivos descargados.
@@ -21,6 +22,7 @@ def descargar_datos_cmadrid(url, carpeta_salida, formato = None, mes = False, di
     """
     # Obtenemos la fecha actual
     hoy =  datetime.now().date()
+    year = str(hoy.year)
     # Hacemos la solicitud a la API  
     response = requests.get(url)
     archivos_descargados = [] # Lista para guardar los nombres de los archivos descargados
@@ -38,6 +40,10 @@ def descargar_datos_cmadrid(url, carpeta_salida, formato = None, mes = False, di
             formato_archivo = elemento.get("format").lower()
             # Obtenemos el nombre del archivo
             nombre = elemento.get("name")
+            # Si ano = True, solo descargamos el archivo del año actual
+            if ano and year not in nombre:
+                continue # Si el nombre no contiene el año actual, lo saltamos
+                nombre_buscado = "str(hoy.year)"
             # Si no se especifica formato descargamos todos los archivos
             #  y si se especifica, descargamos solo los que coinciden
             if formato_usuario is None or formato_archivo == formato_usuario:
@@ -62,9 +68,7 @@ def descargar_datos_cmadrid(url, carpeta_salida, formato = None, mes = False, di
     print(f"{archivos_guardados} de {archivos_totales} archivos guardados exitosamente.")
     return archivos_descargados
 
-
-
-def descargar_datos_madrid(url, carpeta_salida):
+def actualizar_datos_madrid(url, carpeta_salida, actualizar = False):
     """
     Descarga archivos de calidad del aire desde la API del Ayuntamiento de Madrid.
     
@@ -121,106 +125,20 @@ def descargar_datos_madrid(url, carpeta_salida):
                 archivos_dh = []
                 datos = elemento.get("distribution")
                 for i in datos:
-                    print(i.get("title"))
-                    formato = i.get("format",{}).get("value").split('/')[-1]
-                    archivo = i.get("accessURL")
-                    print(f"Descargando: {archivo} como madrid_{i["title"]}.{formato}")
-                    response_dh = requests.get(archivo)
-                    if response_dh.status_code == 200:
-                        with open(f'{carpeta_salida}/madrid_{i["title"]}.{formato}', 'wb') as file:
-                            file.write(response_dh.content)
-                            archivos_dh.append(i["title"])
-                            print("Archivo guardado exitosamente.")
-                    else:
-                        print(f"No se pudo descargar el archivo {i["title"]}. Código de estado: {response.status_code}")
+                    titulo_archivo = i.get("title")
+                    if actualizar:
+                        if str(hoy.year) in titulo_archivo:
+                            formato = i.get("format",{}).get("value").split('/')[-1]
+                            archivo = i.get("accessURL")
+                            print(f"Descargando: {archivo} como madrid_{i["title"]}.{formato}")
+                            response_dh = requests.get(archivo)
+                            if response_dh.status_code == 200:
+                                with open(f'{carpeta_salida}/madrid_{i["title"]}.{formato}', 'wb') as file:
+                                    file.write(response_dh.content)
+                                    archivos_dh.append(i["title"])
+                                    print("Archivo guardado exitosamente.")
+                            else:
+                                print(f"No se pudo descargar el archivo {i["title"]}. Código de estado: {response.status_code}")
         else:
             print(f"No se pudo acceder a la API. Código de estado: {response.status_code}")
         return archivos_dh
-    
-
-def procesar_zips(ruta_entrada, lista_archivos, ruta_guardado):
-    """
-    Maneja archivos ZIP en la ruta especificada, extrayendo y concatenando los CSV dentro de ellos.
-
-    Parámetros:
-        ruta_entrada (str): Ruta donde se encuentran los archivos ZIP.
-        lista_archivos (list): Lista de nombres de archivos ZIP a procesar.
-        ruta_guardado (str): Ruta donde se guardan los archivos csv concatenados.
-
-    La función extrae los archivos CSV de cada ZIP, los concatena y guarda el resultado en un nuevo archivo CSV, después elimina los ZIP.
-    """
-   
-    # Diccionarios para almacenar listas de DataFrames y nombres de CSV
-    listas_dfs = {}
-    listas_csv = {}
-
-    # Crear una carpeta para guardar los archivos concatenados si no existe
-    carpeta_guardado = ruta_guardado
-    os.makedirs(carpeta_guardado, exist_ok=True)
-
-    for archivo in lista_archivos:
-        ruta_zip = f"{ruta_entrada}/madrid_{archivo}.zip"  # Construir la ruta al archivo ZIP
-        listas_dfs[archivo] = []  # Inicializar una lista de DataFrames para este archivo
-        listas_csv[archivo] = []  # Inicializar una lista de nombres de CSV para este archivo
-
-        # Abrir el ZIP y cargar los CSV
-        with zipfile.ZipFile(ruta_zip, 'r') as zip_ref:
-            listas_csv[archivo] = [nombre for nombre in zip_ref.namelist() if nombre.endswith(".csv")]
-            
-            for nombre_csv in listas_csv[archivo]:
-                with zip_ref.open(nombre_csv) as f:
-                    df = pd.read_csv(f, sep=";", index_col=0)
-                    listas_dfs[archivo].append(df)
-
-        # Concatenar los DataFrames de la lista en uno solo
-        df_concatenado = pd.concat(listas_dfs[archivo], ignore_index=True)
-
-        # Guardar el DataFrame concatenado en un archivo CSV
-        ruta_salida = os.path.join(carpeta_guardado, f"madrid_{archivo}.csv")
-        df_concatenado.to_csv(ruta_salida, sep=";", index=False)
-
-        print(f"Archivo concatenado guardado en: {ruta_salida}")
-    
-        # Eliminar el archivo ZIP
-        os.remove(ruta_zip)
-        print(f"Archivo ZIP eliminado: {ruta_zip}")
-
-
-
-def extraer_tabla_pdf(archivo_pdf, pagina, nombre, carpeta_salida):
-    """
-    Extrae la primera tabla de una página específica de un archivo PDF y la guarda como un archivo CSV.
-
-    Args:
-        archivo_pdf (str): Ruta del archivo PDF del cual se extraerá la tabla.
-        pagina (str): Número de la página que contiene la tabla.
-        nombre (str): Nombre del archivo CSV resultante.
-        carpeta_salida (str): Ruta donde se guardará el archivo CSV.
-
-    Returns:
-        bool: True si la extracción y el guardado de la tabla fueron exitosos, False si no se encontraron tablas en la página indicada.
-
-    Raises:
-        FileNotFoundError: Se lanza si el archivo PDF especificado no existe.
-        Exception: Captura y maneja errores inesperados durante el proceso de extracción.
-
-    """
-
-    try:
-        # Extraer tablas de la página indicada
-        tablas = camelot.read_pdf(archivo_pdf, pages=pagina)
-
-        # Verificar si se extrajeron tablas
-        if len(tablas) > 0:
-            tablas[0].to_csv(f"{carpeta_salida}/{nombre}.csv")  # Guardar la primera tabla como CSV
-            print(f"✅ Tabla guardada en {carpeta_salida}")
-            return True
-        else:
-            print("⚠️ No se encontraron tablas en la página indicada.")
-            return False
-
-    except FileNotFoundError:
-        print(f"❌ Error: No se encontró el archivo {archivo_pdf}")
-    except Exception as e:
-        print(f"❌ Error inesperado: {e}")
-

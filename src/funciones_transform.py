@@ -54,31 +54,30 @@ def combinar_h_v(df):
 
 def formato_df(df):
     """
-    Formatea un DataFrame con datos de calidad del aire, asegurando un formato homogéneo y estructurado.
+    Formatea un DataFrame con datos de calidad del aire, garantizando una estructura homogénea y bien organizada.
 
-    Pasos realizados:
-    1. Convierte las columnas "provincia", "municipio", "estacion", "magnitud", "ano", "mes" y "dia" a tipo string.
-    2. Rellena los valores de mes y día para que tengan siempre dos dígitos.
-    3. Crea una nueva columna "fecha" combinando año, mes y día.
-    4. Une las columnas de hora y validación mediante la función `combinar_h_v()`.
-    5. Transforma las columnas de hora en filas mediante `pd.melt()`.
-    6. Separa la validación del valor y deja únicamente la hora en la columna "hora".
-    7. Ajusta el valor "24" en la columna "hora" a "23:59" y añade ":00" en las demás horas.
-    8. Crea una columna "fecha_hora_f" en formato datetime.
-    9. Extrae el estado de validación de la medida desde la columna "valor".
-    10. Corrige los valores con comas decimales, reemplazando `,` por `.` en la columna "valor".
-    11. Convierte la columna "valor" a tipo float para realizar operaciones numéricas.
-    12. Crea un identificador único "id_medida" para cada observación.
-    13. Une "provincia", "municipio" y "estacion" en "codigo_estacion" con formato estandarizado.
-    14. Elimina las filas con valores nulos.
+    Este proceso incluye:
+    1. Conversión de columnas clave ("provincia", "municipio", "estacion", "magnitud", "ano", "mes" y "dia") a tipo string.
+    2. Aseguramiento de que "mes" y "dia" tengan siempre dos dígitos.
+    3. Creación de la columna "fecha" combinando año, mes y día.
+    4. Unificación de las columnas de hora y validación mediante `combinar_h_v()`.
+    5. Transformación de las columnas de hora en filas con `pd.melt()`.
+    6. Extracción de la validación del valor y ajuste de la columna "hora".
+    7. Modificación del valor "24" en "hora" a "23:59" y formato adecuado para otras horas.
+    8. Creación de la columna "fecha_hora_f" en formato datetime.
+    9. Extracción del estado de validación de la medida desde la columna "valor".
+    10. Corrección de valores con comas decimales, reemplazando `,` por `.` en "valor".
+    11. Conversión de "valor" a tipo float.
+    12. Generación de un identificador único "id_medida" para cada observación.
+    13. Construcción del código "codigo_estacion" combinando "provincia", "municipio" y "estacion".
+    14. Eliminación de filas con valores nulos o extremos.
 
     Args:
-        df : pd.DataFrame
-            DataFrame con los datos de calidad del aire.
+        df (pd.DataFrame): DataFrame con los datos de calidad del aire.
 
     Returns:
-        pd.DataFrame
-            DataFrame formateado con la estructura correcta.
+        pd.DataFrame: DataFrame formateado con la estructura correcta y listo para su análisis.
+
     """
     # Pasamos las columnas de "provincia", "municipio", "estacion" y "magnitud" a str porque no vamos a operar con esos números
     df[["provincia", "municipio", "estacion", "magnitud"]] = df[["provincia", "municipio", "estacion", "magnitud"]].astype(str)
@@ -129,6 +128,9 @@ def formato_df(df):
     df["codigo_estacion"] = df["provincia"].astype(str).str.zfill(2) + \
                             df["municipio"].astype(str).str.zfill(3) + \
                             df["estacion"].astype(str).str.zfill(3)
+    df["municipio"] = df["municipio"].astype(str).str.zfill(3)
+    df["codigo_tecnica"] = df["punto_muestreo"].apply(lambda x: x.split('_')[-1])
+    df = df[df["valor"].abs() < 1000]
     df = df.dropna()
     return df
 

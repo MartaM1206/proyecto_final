@@ -81,7 +81,7 @@ Registra las mediciones realizadas en las estaciones.
 - `codigo_tecnica` (`VARCHAR(10)`) – Clave foránea, referencia a `tecnicas_medida`.
 
 ## 🔗 Relaciones en la Base de Datos
+El diagrama de relaciones se encuentra en el archivo "diagrama_bbdd.png" de esta misma carpeta
 - `municipios` está vinculado a `provincias` por `codigo_provincia`.
 - `estaciones` está vinculado a `zonas` y `municipios`.
 - `medidas` está vinculada a `provincias`, `municipios`, `contaminantes`, `tecnicas_medida` y `estaciones`.
-

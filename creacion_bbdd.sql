@@ -61,7 +61,7 @@ CREATE TABLE medidas (
     punto_muestreo TEXT,
     fecha TEXT,
     hora TEXT,
-    valor DECIMAL(5, 3),
+    valor DECIMAL(6, 2),
     fecha_hora_f TIMESTAMP,
     validacion TEXT,
     id_medida VARCHAR(75) PRIMARY KEY,
@@ -71,21 +71,18 @@ CREATE TABLE medidas (
 
 
 
--- Crear la función que ejecutará la eliminación de registros
-CREATE OR REPLACE FUNCTION reemplazar_medida()
-RETURNS TRIGGER AS $$
+-- Crear el trigger que ejecuta la eliminación de registros antes de insertar un nuevo id_medida terminado en V
+CREATE TRIGGER trigger_reemplazo_medida
+ON medidas
+INSTEAD OF INSERT
+AS
 BEGIN
     DELETE FROM medidas
-    WHERE LEFT(NEW.id_medida, LENGTH(NEW.id_medida)-1) = LEFT(id_medida, LENGTH(id_medida)-1)
-    AND RIGHT(id_medida, 1) IN ('N', 'T');
+    WHERE LEFT(inserted.id_medida, LEN(inserted.id_medida)-1) = LEFT(medidas.id_medida, LEN(medidas.id_medida)-1)
+    AND RIGHT(medidas.id_medida, 1) IN ('N', 'T');
 
-    RETURN NEW;
+    INSERT INTO medidas
+    SELECT *
+    FROM inserted
+    WHERE RIGHT(inserted.id_medida, 1) = 'V';
 END;
-$$ LANGUAGE plpgsql;
-
--- Crear el trigger que ejecuta la función antes de insertar un nuevo id_medida terminado en V
-CREATE TRIGGER trigger_reemplazo_medida
-BEFORE INSERT ON medidas
-FOR EACH ROW
-WHEN (RIGHT(NEW.id_medida, 1) = 'V')
-EXECUTE FUNCTION reemplazar_medida();

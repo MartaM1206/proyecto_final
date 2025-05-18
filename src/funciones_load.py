@@ -82,7 +82,7 @@ def cargar_datos(conn, cur, lista_df, lista_tablas, dict_pk):
         cur.executemany(query, datos)  # Insertar un lote de filas
         conn.commit()
 
-        print(f"Registros {df} insertados correctamente en {tabla}")
+        print(f"Registros insertados correctamente en {tabla}")
 
 
 

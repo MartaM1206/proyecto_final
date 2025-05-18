@@ -47,22 +47,22 @@ carpeta_procesados = os.getenv("carpeta_procesados")
 df_cmadrid = ft.unir_archivos(carpeta_descargas, "cmadrid_20", carpeta_procesados, "cmadrid")
 # Generamos df uniendo todos los csv de datos de medidas de Madrid
 df_madrid = ft.unir_archivos(carpeta_descargas, "madrid_20", carpeta_procesados, "madrid")
-# Usamos df_cmadrid y df_madrid para generar un df_medidas
-df_medidas = ft.crear_df_medidas(df_cmadrid, df_madrid)
+# Formateamos los df de medidas para que tengan las mismas columnas y tipos de datos y los unimos
+df_medidas = ft.crear_df_medidas(df_cmadrid, df_madrid, carpeta_procesados)
 # Cargamos las tablas extraidas de los pdf para generar df_tecnicas y df_contaminantes
-df_datos_contaminantes_cmadrid = pd.read_csv("data/raw/datos_contaminantes_cmadrid.csv")
-df_datos_contaminantes_madrid = pd.read_csv("../data/raw/datos_contaminantes_madrid.csv")
+df_datos_contaminantes_cmadrid = pd.read_csv(f"{carpeta_descargas}/datos_contaminantes_cmadrid.csv")
+df_datos_contaminantes_madrid = pd.read_csv(f"{carpeta_descargas}/datos_contaminantes_madrid.csv")
 # Primero obtenemos un diccionario con las unidades de medida
-dict_unidades = ft.obtener_unidades(df_datos_contaminantes_cmadrid)
+dict_unidades = ft.diccionario_unidades(df_datos_contaminantes_cmadrid)
 # Procesamos ambos df para obtener un df_tecnicas y un df_contaminantes
 df_tecnicas, df_contaminantes = ft.tablas_contaminantes(df_datos_contaminantes_cmadrid, df_datos_contaminantes_madrid, dict_unidades)
 # cargamos los csv con informacion de las estaciones de medida
-estaciones_cmadrid = pd.read_csv("../data/raw/cmadrid_Red de Calidad del Aire. Estaciones.csv", sep=";", encoding="latin1")
-estaciones_madrid = pd.read_csv("../data/raw/madrid_Calidad del aire. Estaciones de control.csv", sep=";")
+estaciones_cmadrid = pd.read_csv(f"{carpeta_descargas}/cmadrid_Red de Calidad del Aire. Estaciones.csv", sep=";", encoding="latin1")
+estaciones_madrid = pd.read_csv(f"{carpeta_descargas}/madrid_Calidad del aire. Estaciones de control.csv", sep=";")
 # A partir de estaciones_cmadrid obtenemos una tabla de zonas de calidad del aire
 df_zonas = ft.obtener_zonas(estaciones_cmadrid)
 # Procesamos todos los datos de estaciones para obtener informacion de las estaciones y los municipios
-df_estaciones, df_municipios = ft.obtener_estaciones_y_municipios(estaciones_cmadrid, estaciones_madrid)[0]
+df_estaciones, df_municipios = ft.obtener_estaciones_y_municipios(estaciones_cmadrid, estaciones_madrid)
 
 
 conexion = os.getenv("conexion_bbdd")
@@ -82,7 +82,8 @@ dict_pk = {"provincias": "codigo_provincia",
            "estaciones":"codigo_estacion"}
 # Cargamos estos df en la base de datos
 fl.cargar_datos(conn, cur, lista_df, lista_tablas, dict_pk)
-# El df medidas es tan grande que no es eficiente cargarlo mediante insert, por lo que pasamos a csv y usamos copy
+# Los df de medidas son tan grandes que no es eficiente cargarlos mediante insert, por lo que los pasamos a csv y usamos copy
 df_medidas.to_csv("medidas.csv", index=False, header=False, sep=";", encoding="utf-8", errors="ignore")
+#df_medidas_madrid.to_csv("medidas_madrid.csv", index=False, header=False, sep=";", encoding="utf-8", errors="ignore")
 fl.cargar_csv_postgres(cur, conn, [("medidas.csv", "medidas")])
 fl.cerrar_conexion(conn, cur)

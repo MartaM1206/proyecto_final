@@ -121,22 +121,31 @@ def descargar_datos_madrid(url, carpeta_salida):
                 archivos_dh = []
                 datos = elemento.get("distribution")
                 for i in datos:
-                    print(i.get("title"))
+                    nombre_archivo = i.get("title")
                     formato = i.get("format",{}).get("value").split('/')[-1]
                     archivo = i.get("accessURL")
-                    print(f"Descargando: {archivo} como madrid_{i["title"]}.{formato}")
-                    response_dh = requests.get(archivo)
-                    if response_dh.status_code == 200:
-                        with open(f'{carpeta_salida}/madrid_{i["title"]}.{formato}', 'wb') as file:
-                            file.write(response_dh.content)
-                            archivos_dh.append(i["title"])
-                            print("Archivo guardado exitosamente.")
+                    # Verificar si el título es solo un año
+                    if nombre_archivo.isdigit() and len(nombre_archivo) == 4:  # Asegura que es un año (ej. "2024")
+                         descargar = True
+                         nombre = nombre_archivo
+                         archivos_dh.append(nombre)
                     else:
-                        print(f"No se pudo descargar el archivo {i["title"]}. Código de estado: {response.status_code}")
-        else:
-            print(f"No se pudo acceder a la API. Código de estado: {response.status_code}")
-        return archivos_dh
-    
+                        descargar = formato.lower() == "csv"  # Si tiene más texto, solo descarga CSV
+                        nombre = nombre_archivo.split(" ")[1]
+                    if descargar:
+                        print(f"Descargando: {archivo} como madrid_{nombre}.{formato}")
+                        response_dh = requests.get(archivo)
+                        if response_dh.status_code == 200:
+                             with open(f'{carpeta_salida}/madrid_{nombre}.{formato}', 'wb') as file:
+                                file.write(response_dh.content)
+                                
+                                print("Archivo guardado exitosamente.")
+                        else:
+                            print(f"No se pudo descargar el archivo {nombre}. Código de estado: {response_dh.status_code}")
+
+    return archivos_dh
+
+                
 
 def procesar_zips(ruta_entrada, lista_archivos, ruta_guardado):
     """

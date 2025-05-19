@@ -131,6 +131,7 @@ def formato_df(df):
                             df["estacion"].astype(str).str.zfill(3)
     df["municipio"] = df["municipio"].astype(str).str.zfill(3)
     df["codigo_tecnica"] = df["punto_muestreo"].apply(lambda x: x.split('_')[-1])
+    df["codigo_tecnica"] = df["codigo_tecnica"].str.replace("A", "47")
     df = df[df["valor"].abs() < 1000]
     df = df.dropna()
     df.drop_duplicates(subset=["id_medida"],inplace=True)

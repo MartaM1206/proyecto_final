@@ -71,7 +71,7 @@ CREATE TABLE medidas (
 
 
 
--- Crear el trigger que ejecuta la eliminación de registros antes de insertar un nuevo id_medida terminado en V
+-- Crear el trigger que ejecuta la eliminación de registros antes de insertar un nuevo id_medida terminado en V. Pendiente de implementar en next steps
 CREATE TRIGGER trigger_reemplazo_medida
 ON medidas
 INSTEAD OF INSERT

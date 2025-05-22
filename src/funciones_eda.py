@@ -48,7 +48,7 @@ def obtener_datos_madrid(conexion, anio_inicio, anio_fin, zona):
             return None
 
         
-        query = f"""SELECT estaciones.nombre_estacion AS estacion,
+        query = """SELECT estaciones.nombre_estacion AS estacion,
                         contaminantes.descripcion_magnitud AS contaminante,
                         fecha_hora_f AS hora_medida, 
                         valor,

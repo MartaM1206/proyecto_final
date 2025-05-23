@@ -139,5 +139,5 @@ def separar_datos(df):
     # Extraer listas únicas para visualizaciones
     estaciones = df["estacion"].unique().to_list()
     contaminantes = df["contaminante"].unique().to_list()
-
-    return df_mensual, df_diario, df_anual, estaciones, contaminantes
+    anios = df["año"].unique().to_list()
+    return df_mensual, df_diario, df_anual, estaciones, contaminantes, anios

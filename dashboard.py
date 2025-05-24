@@ -39,9 +39,9 @@ madrid = obtener_datos()
 df_mensual, df_diario, df_anual, estaciones, contaminantes, anios = fdb.separar_datos(madrid)
 num_estaciones = len(estaciones)
 num_contaminantes = len(contaminantes)
-num_anios = len(anios)  # Corregí la variable para evitar confusión con la lista
-
-
+num_anios = len(anios)  
+estaciones_tr = madrid.filter(pl.col("tipo_estacion") =="Tráfico")["estacion"].unique().to_list()
+estaciones_fn = madrid.filter(pl.col("tipo_estacion") =="Fondo")["estacion"].unique().to_list()
 # Sidebar para navegación
 st.sidebar.title("Menú de navegación")
 opcion = st.sidebar.radio("Selecciona una página", ["Inicio", "Gráficos por año", "Comparación de estaciones", "Filtros avanzados", "Conclusiones"])
@@ -76,24 +76,25 @@ if opcion == "Inicio":
 # Página de gráficos filtrados por año con Polars y Matplotlib
 if opcion == "Gráficos por año":
     st.title("Gráficos de estaciones por año")
+    st.write("Aquí puedes ver las medias mensuales de los contaminantes medidos en cada estación " \
+    "de Madrid. Selecciona el año y la estación que quieras analizar")
     anio_seleccionado = st.selectbox("Selecciona un año", anios)
+    estacion_seleccionada = st.selectbox("Selecciona una estacion", estaciones)
+    st.pyplot(fdb.estacion_anio(df_mensual, contaminantes, anio_seleccionado, estacion_seleccionada))
 
-    df_filtrado = madrid.filter(pl.col("año") == anio_seleccionado)
+if opcion == "Comparación de estaciones":
+    st.print(estaciones_tr)
+    st.print(estaciones_fn)
 
-    # Crear gráfico con Matplotlib
-    fig, ax = plt.subplots()
-    for estacion in df_filtrado["estacion"].unique():
-        datos_estacion = df_filtrado.filter(pl.col("Estación") == estacion)
-        ax.plot(datos_estacion["fecha"].to_numpy(), datos_estacion["valor"].to_numpy(), label=estacion)
 
-    ax.set_title(f"Datos de estaciones en {anio_seleccionado}")
-    ax.set_xlabel("Fecha")
-    ax.set_ylabel("Valor")
-    ax.legend()
+
+
+
+    #df_filtrado = df_mensual.filter((pl.col("año") == anio_seleccionado) & (pl.col("estacion") == estacion_seleccionada))
+
+  
     
-    # Mostrar en Streamlit
-    st.pyplot(fig)
-
+    
 
 
 

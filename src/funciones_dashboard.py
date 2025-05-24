@@ -141,3 +141,149 @@ def separar_datos(df):
     contaminantes = df["contaminante"].unique().to_list()
     anios = df["año"].unique().to_list()
     return df_mensual, df_diario, df_anual, estaciones, contaminantes, anios
+
+
+
+
+def estaciones_anio(df_mensual, contaminantes, año_seleccionado, estaciones_seleccionadas):
+    """
+    Genera un gráfico de medias mensuales de contaminantes para una estación específica y un año seleccionado.
+
+    Args:
+        df_mensual: DataFrame con los datos mensuales.
+        contaminantes: Lista de contaminantes a graficar.
+        estacion_seleccionada: Estación seleccionada para el análisis.
+        año_seleccionado: Año a filtrar.
+    Returns: 
+        Figura de Matplotlib lista para visualizar en Streamlit.
+    """
+    # Crear diccionarios de colores y marcadores
+    cmap = plt.get_cmap("tab20", len(contaminantes))
+    colores_dict = {cont: cmap(i) for i, cont in enumerate(contaminantes)}
+
+    marcadores_unicos = ['o', '^', 's', 'D', 'x', 'p', '*', 'h', '+', 'X', '|', '_', 'v', '<', '4']
+    marcadores_dict = {cont: marcadores_unicos[i % len(marcadores_unicos)] for i, cont in enumerate(contaminantes)}
+
+    # Filtrar por año y estación seleccionada
+    df_año = df_mensual.filter(pl.col("año") == año_seleccionado)
+    
+
+    # Definir la cantidad de columnas y filas
+    num_cols =  1
+    num_rows = math.ceil(len(estaciones_seleccionadas)/num_cols)
+
+    fig, axes = plt.subplots(num_rows, num_cols, figsize=(12, 5), sharex=True, sharey=True)
+    axes = axes.flatten().tolist()
+
+    for j, estacion in enumerate(estaciones_seleccionadas):  
+        df_estacion = df_año.filter(pl.col("estacion") == estacion).sort("mes")
+        ax = axes[j]  
+
+        for contaminante in contaminantes:
+            df_contaminante = df_estacion.filter(pl.col("contaminante") == contaminante)
+            if df_contaminante.height > 0:
+                ax.plot(df_contaminante["mes"], df_contaminante["media_mensual"], 
+                        marker=marcadores_dict[contaminante], color=colores_dict[contaminante], label=contaminante)
+
+        ax.set_title(f"Estación {estacion} - Año {año_seleccionado}")
+        ax.set_ylabel("Media Mensual")
+        ax.set_xticks(df_contaminante["mes"].to_list())
+        ax.set_xticklabels(df_contaminante["mes"], rotation=45, ha="right")
+        ax.grid(True)
+        plt.tight_layout()
+    return fig
+    
+
+def graficar_contaminantes(df_mensual, contaminantes, estaciones, año_seleccionado):
+    """
+    Genera gráficos de medias mensuales de contaminantes por estación y año.
+
+    :param df_mensual: DataFrame con los datos mensuales.
+    :param contaminantes: Lista de contaminantes a graficar.
+    :param estaciones: Lista de estaciones.
+    :param año_seleccionado: Año a filtrar.
+    """
+    # Crear diccionarios de colores y marcadores
+    cmap = plt.get_cmap("tab20", len(contaminantes))
+    colores_dict = {cont: cmap(i) for i, cont in enumerate(contaminantes)}
+
+    marcadores_unicos = ['o', '^', 's', 'D', 'x', 'p', '*', 'h', '+', 'X', '|', '_', 'v', '<', '4']
+    marcadores_dict = {cont: marcadores_unicos[i % len(marcadores_unicos)] for i, cont in enumerate(contaminantes)}
+
+    # Filtrar por año seleccionado
+    df_año = df_mensual.filter(pl.col("año") == año_seleccionado)
+
+    # Definir la cantidad de columnas y filas
+    num_cols = 3  
+    num_rows = math.ceil(len(estaciones)/num_cols)# Solo una fila para el año seleccionado
+
+    fig, axes = plt.subplots(num_rows, num_cols, figsize=(12, 5), sharex=True, sharey=True)
+    axes = axes.flatten().tolist()
+
+    for j, estacion in enumerate(estaciones):  
+        df_estacion = df_año.filter(pl.col("estacion") == estacion).sort("mes")
+        ax = axes[j]  
+
+        for contaminante in contaminantes:
+            df_contaminante = df_estacion.filter(pl.col("contaminante") == contaminante)
+            if df_contaminante.height > 0:
+                ax.plot(df_contaminante["mes"], df_contaminante["media_mensual"], 
+                        marker=marcadores_dict[contaminante], color=colores_dict[contaminante], label=contaminante)
+
+        ax.set_title(f"Estación {estacion} - Año {año_seleccionado}")
+        ax.set_ylabel("Media Mensual")
+        ax.set_xticks(df_contaminante["mes"].to_list())
+        ax.set_xticklabels(df_contaminante["mes"], rotation=45, ha="right")
+        ax.grid(True)
+        plt.tight_layout()
+    return fig
+
+def estacion_anio(df_mensual, contaminantes, año_seleccionado, estacion_seleccionada):
+    """
+    Genera un gráfico de medias mensuales de contaminantes para una estación específica y un año seleccionado.
+
+    Args:
+        df_mensual: DataFrame con los datos mensuales.
+        contaminantes: Lista de contaminantes a graficar.
+        estacion_seleccionada: Estación seleccionada para el análisis.
+        año_seleccionado: Año a filtrar.
+    Returns: 
+        Figura de Matplotlib lista para visualizar en Streamlit.
+    """
+    # Crear diccionarios de colores y marcadores
+    cmap = plt.get_cmap("tab20", len(contaminantes))
+    colores_dict = {cont: cmap(i) for i, cont in enumerate(contaminantes)}
+
+    marcadores_unicos = ['o', '^', 's', 'D', 'x', 'p', '*', 'h', '+', 'X', '|', '_', 'v', '<', '4']
+    marcadores_dict = {cont: marcadores_unicos[i % len(marcadores_unicos)] for i, cont in enumerate(contaminantes)}
+
+    # Filtrar por año y estación seleccionada
+    df_año = df_mensual.filter(pl.col("año") == año_seleccionado)
+    df_estacion = df_año.filter(pl.col("estacion") == estacion_seleccionada)
+
+    # Crear la figura
+    fig, ax = plt.subplots(figsize=(10, 6))
+
+    # Iterar sobre contaminantes y graficar cada uno
+    for contaminante in contaminantes:
+        df_contaminante = df_estacion.filter(pl.col("contaminante") == contaminante)
+        if df_contaminante.height > 0:
+            ax.plot(df_contaminante["mes"], df_contaminante["media_mensual"], 
+                    marker=marcadores_dict[contaminante], color=colores_dict[contaminante], label=contaminante)
+
+    # Configuración del gráfico
+    ax.set_title(f"Estación {estacion_seleccionada} - Año {año_seleccionado}")
+    ax.set_ylabel("Media Mensual")
+    ax.set_xticks(df_estacion["mes"].to_list())
+    ax.set_xticklabels(df_estacion["mes"], rotation=45, ha="right")
+    ax.grid(True)
+    
+    # Leyenda
+    handles = [plt.Line2D([0], [0], marker=marcadores_dict[c], color=colores_dict[c], linestyle='None', markersize=8)
+               for c in contaminantes]
+    fig.legend(handles, contaminantes, loc="upper center", bbox_to_anchor=(0.5, -0.15), title="Contaminantes", frameon=True, ncol=4, fontsize=10)
+
+    fig.suptitle(f"Comparación de Medias Mensuales - Estación {estacion_seleccionada} - Año {año_seleccionado}", fontsize=16, y=1.02)
+    plt.tight_layout()
+    
+    return fig  # Devuelve la figura para su uso en Streamlit

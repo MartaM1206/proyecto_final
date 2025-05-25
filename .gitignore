@@ -3,3 +3,4 @@ notebooks_pruebas
 .env
 prueba*
 medidas.csv
+.venv

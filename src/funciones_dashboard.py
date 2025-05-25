@@ -115,21 +115,21 @@ def separar_datos(df):
         pl.col("hora_medida").dt.date().alias("fecha")
     ])
 
-    # ✅ Media mensual
+    # Media mensual
     df_mensual = (
         df.group_by(["estacion", "contaminante", "mes", "año"])
         .agg(pl.col("valor").mean().round(2).alias("media_mensual"))
         .sort(["estacion", "contaminante", "año", "mes"])
     )
 
-    # ✅ Media diaria
+    # Media diaria
     df_diario = (
         df.group_by(["estacion", "contaminante", "fecha"])
         .agg(pl.col("valor").mean().round(2).alias("media_diaria"))
         .sort(["estacion", "contaminante", "fecha"])
     )
 
-    # ✅ Media anual
+    # Media anual
     df_anual = (
         df.group_by(["estacion", "contaminante", "año"])
         .agg(pl.col("valor").mean().round(2).alias("media_anual"))

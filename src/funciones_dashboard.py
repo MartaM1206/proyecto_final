@@ -223,7 +223,7 @@ def evolucion_maximos_interactivo(df_diario, contaminantes, estacion):
     # Extraemos el año de la columna 'fecha'
     df_diario = df_diario.with_columns(pl.col("fecha").dt.year().alias("año"))
 
-    # Filtramos por estación y obtenemod los valores máximos por año y contaminante
+    # Filtramos por estación y obtenemos los valores máximos por año y contaminante
     df_maximos = df_diario.filter(
         (pl.col("estacion") == estacion) & (pl.col("contaminante").is_in(contaminantes))
     ).group_by(["año", "contaminante"]).agg(
@@ -266,7 +266,6 @@ def graficar_medias_diarias_interactivo(df_filtrado, contaminantes, estacion_sel
 
     # Rotamos las etiquetas del eje x
     fig.update_layout(xaxis_tickangle=-45)
-    
 
     return fig
 

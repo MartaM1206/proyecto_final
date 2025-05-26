@@ -37,8 +37,9 @@ def obtener_datos_madrid(conexion, anio_inicio, anio_fin, zona):
             DataFrame de Polars con las columnas ['estacion', 'contaminante', 'hora_medida', 'valor', 'unidad', 'id_medida'].
             Si la conexión falla o hay un error en la consulta, retorna `None`.
     """
+    # Inicializamos conexión y cursor como None para evitar errores si falla la conexión
     conn, cur = None, None
-    
+    # Intentamos conectar
     try:
         conn, cur = fl.conectar_postgres(conexion)
         
@@ -47,7 +48,7 @@ def obtener_datos_madrid(conexion, anio_inicio, anio_fin, zona):
             print("Error: No se pudo conectar a la base de datos.")
             return None
 
-        
+        # query que vamos a ejecutar
         query = """SELECT estaciones.nombre_estacion AS estacion,
                         contaminantes.descripcion_magnitud AS contaminante,
                         fecha_hora_f AS hora_medida, 
@@ -60,18 +61,19 @@ def obtener_datos_madrid(conexion, anio_inicio, anio_fin, zona):
                 JOIN zonas ON estaciones.codigo_zona = zonas.codigo_zona
                 WHERE EXTRACT(YEAR FROM fecha_hora_f) BETWEEN %s AND %s
                 AND zonas.descripcion = %s"""
-
+        #E jecutamos la queery
         cur.execute(query, (anio_inicio, anio_fin, zona))
+        # Obtenemos los resultados de la query
         datos = cur.fetchall()
         
-        # Definir nombres de columnas
+        # Definir nombres de columnas del df de polar
         column_names = ["estacion", "contaminante", "hora_medida", "valor", "unidad", "id_medida"]
         
         # Convertir resultados en un DataFrame de Polars
         df = pl.DataFrame(datos, schema=column_names, orient="row")
         
         return df
-
+    # Salida si hay error en la conexión o la consulta
     except Exception as e:
         print(f"Error al ejecutar la consulta: {e}")
         return None
@@ -85,27 +87,30 @@ def obtener_datos_madrid(conexion, anio_inicio, anio_fin, zona):
 def preproceso_datos(df):
     """
     Realiza el preprocesamiento de los datos de contaminación en un DataFrame de Polars.
-    Convierte la columna "valor" a float, agrega una columna "mes_año" para agrupamiento 
-    y calcula la media mensual de los valores. Además, extrae listas únicas de estaciones 
-    y contaminantes presentes en el conjunto de datos.
+
+    Este proceso convierte la columna "valor" a tipo float, extrae el mes de la columna "hora_medida",
+    y calcula la media mensual por estación y contaminante. Además, obtiene listas únicas de estaciones 
+    y contaminantes presentes en el conjunto de datos para su uso en visualizaciones.
 
     Args:
-        df : pl.DataFrame
-            DataFrame de Polars con datos de contaminación, incluyendo las columnas 
-            ["estacion", "contaminante", "hora_medida", "valor"].
+        df (pl.DataFrame): DataFrame de Polars con datos de contaminación, que incluye las columnas:
+            - "estacion" (str): Nombre de la estación.
+            - "contaminante" (str): Tipo de contaminante.
+            - "hora_medida" (datetime): Fecha y hora de la medición.
+            - "valor" (float | str): Valor de la medición.
 
     Returns:
-        tuple (pl.DataFrame, list, list)
-            - `df_mensual` (pl.DataFrame): DataFrame con la media mensual por estación y contaminante.
-            - `estaciones` (list): Lista de estaciones únicas en los datos.
-            - `contaminantes` (list): Lista de contaminantes únicos en los datos.
-
+        tuple: Una tupla con los siguientes elementos:
+            - df_mensual (pl.DataFrame): DataFrame con la media mensual por estación y contaminante.
+                Incluye las columnas: ["estacion", "contaminante", "mes", "media_mensual"].
+            - estaciones (list[str]): Lista de nombres de estaciones únicas en los datos.
+            - contaminantes (list[str]): Lista de tipos de contaminantes únicos en los datos.
     """
     # Convertimos la columna "valor" a float64
     df = df.with_columns(pl.col("valor").cast(pl.Float64))
     # Calculamos la media mensual de cada contaminante por estación
-    # Primero creamos un df con una columna "mes_año" a partir de la columna "hora medida"
-    # Después agrupamos por estación, contaminante y mes y calculamos la media de los balores
+    # Primero creamos un df con una columna "mes" a partir de la columna "hora medida"
+    # Después agrupamos por estación, contaminante y mes y calculamos la media de los valores
     df_mensual =(
     df.with_columns(
         pl.col("hora_medida").dt.month().alias("mes"))
@@ -166,7 +171,7 @@ def graficos_estaciones(df_mensual, estaciones, contaminantes):
     for i, estacion in enumerate(estaciones):
         df_estacion = df_mensual.filter(pl.col("estacion") == estacion)
         ax = axes[i]
-
+        # Representa una línea por cada contaminante
         for idx, contaminante in enumerate(contaminantes):
             df_contaminante = df_estacion.filter(pl.col("contaminante") == contaminante)
             if df_contaminante.height > 0:  # Evitar contaminantes sin datos

@@ -66,7 +66,7 @@ Para la visualización y presentación interactiva de los resultados del anális
 - Integración con Python: Dado que todo el análisis de datos, desde el ETL hasta el EDA, se ha realizado en Python (utilizando librerías como Polars, Pandas y Matplotlib), Streamlit ofrece una integración nativa y sin fricciones. Esto significa que las funciones de análisis y los objetos de visualización ya creados en Python pueden incorporarse directamente al dashboard.
 - Interactividad: Streamlit proporciona una manera sencilla de añadir widgets interactivos como selectores, deslizadores y botones, que se conectan de forma intuitiva a los datos. Esto permite a los usuarios filtrar y explorar la información de manera dinámica sin necesidad de conocimientos técnicos avanzados.
 
-El dashboard incluye, al menos, las siguientes **visualizaciones clave** y funcionalidades:
+El dashboard incluye las siguientes **visualizaciones clave** y funcionalidades:
 
 * **Tendencias Temporales de Contaminantes por Estación**:
     * **Funcionalidad**: Permite seleccionar un contaminante y una estación específica para observar su evolución diaria o mensual a lo largo del tiempo.

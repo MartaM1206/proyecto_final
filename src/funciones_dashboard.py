@@ -40,8 +40,9 @@ def obtener_datos(conexion, anio_inicio, anio_fin, zona):
             ['estacion', 'contaminante', 'hora_medida', 'valor', 'unidad', 'id_medida', 'tipo_estacion'].
             Si la conexión falla o hay un error en la consulta, retorna `None`.
     """
+    # Inicializamos conexión y cursor
     conn, cur = None, None
-    
+    # Intentamos conectar a la base de datos
     try:
         conn, cur = fl.conectar_postgres(conexion)
         
@@ -50,7 +51,7 @@ def obtener_datos(conexion, anio_inicio, anio_fin, zona):
             print("Error: No se pudo conectar a la base de datos.")
             return None
 
-        
+        # Query que ejecutamos
         query = """SELECT estaciones.nombre_estacion AS estacion,
                         contaminantes.descripcion_magnitud AS contaminante,
                         fecha_hora_f AS hora_medida, 
@@ -64,18 +65,18 @@ def obtener_datos(conexion, anio_inicio, anio_fin, zona):
                 JOIN zonas ON estaciones.codigo_zona = zonas.codigo_zona
                 WHERE EXTRACT(YEAR FROM fecha_hora_f) BETWEEN %s AND %s
                 AND zonas.descripcion = %s"""
-
+        # Ejecutar query con los parámetros que entran en la función y obtener los datos
         cur.execute(query, (anio_inicio, anio_fin, zona))
         datos = cur.fetchall()
         
-        # Definir nombres de columnas
+        # Definir nombres de columnas para el df de polars
         column_names = ["estacion", "contaminante", "hora_medida", "valor", "unidad", "id_medida", "tipo_estacion"]
         
         # Convertir resultados en un DataFrame de Polars
         df = pl.DataFrame(datos, schema=column_names, orient="row")
         
         return df
-
+    # si hay error al conectar o en la consulta
     except Exception as e:
         print(f"Error al ejecutar la consulta: {e}")
         return None
@@ -157,14 +158,14 @@ def estacion_anio_interactivo(df_mensual, contaminantes, año_seleccionado, esta
     Returns:
         plotly.graph_objects.Figure: Gráfico interactivo de evolución de medias mensuales.
     """
-    # Filtrar por año, estación y contaminantes seleccionados
+    # Filtramos el df por año, estación y contaminantes seleccionados
     df_filtrado = df_mensual.filter(
         (pl.col("año") == año_seleccionado) &
         (pl.col("estacion") == estacion_seleccionada) &
         (pl.col("contaminante").is_in(contaminantes))
     ).sort("mes")
 
-    # Crear gráfico interactivo con Plotly
+    # Creamos gráfico interactivo con plotly
     fig = px.line(
         df_filtrado, x="mes", y="media_mensual", color="contaminante", markers=True,
         title=f"Medias Mensuales en {estacion_seleccionada} - {año_seleccionado}",
@@ -191,15 +192,15 @@ def evolucion_anual_interactivo(df_anual, contaminantes, estacion):
     Returns:
         plotly.graph_objects.Figure: Gráfico interactivo con la evolución de medias anuales.
     """
-    # Filtrar la estación seleccionada y los contaminantes requeridos
+    # Filtramos el df por la estación seleccionada y los contaminantes requeridos
     df_estacion = df_anual.filter((pl.col("estacion") == estacion) & (pl.col("contaminante").is_in(contaminantes))).sort("año")
 
-    # Crear gráfico interactivo con Plotly
+    # Creamo el gráfico interactivo con plotly
     fig = px.line(
         df_estacion, x="año", y="media_anual", color="contaminante", markers=True,
         title=f"Evolución de Medias Anuales - {estacion}",
         labels={"media_anual": "Media Anual", "año": "Año"},
-        hover_data={"media_anual": ":.2f", "año": True}
+        hover_data={"media_anual": ":.2f", "año": True} # Para mostrar la media con 2 decimales y el año en la etiqueta al pasar el cursor
     )
      # Rotamos las etiquetas del eje x
     fig.update_layout(xaxis_tickangle=-45)
@@ -219,17 +220,17 @@ def evolucion_maximos_interactivo(df_diario, contaminantes, estacion):
         plotly.graph_objects.Figure: Gráfico interactivo de evolución de máximos anuales.
         pl.DataFrame: DataFrame con las fechas de los máximos.
     """
-    # Extraer el año de la columna 'fecha'
+    # Extraemos el año de la columna 'fecha'
     df_diario = df_diario.with_columns(pl.col("fecha").dt.year().alias("año"))
 
-    # Filtrar por estación y obtener los valores máximos por año y contaminante
+    # Filtramos por estación y obtenemod los valores máximos por año y contaminante
     df_maximos = df_diario.filter(
         (pl.col("estacion") == estacion) & (pl.col("contaminante").is_in(contaminantes))
     ).group_by(["año", "contaminante"]).agg(
         pl.col("media_diaria").max().alias("maximo_anual"),
         pl.col("fecha").filter(pl.col("media_diaria") == pl.col("media_diaria").max()).first().alias("fecha_maximo")
     ).sort("año")
-    # Crear gráfico interactivo con Plotly
+    # Creamos un gráfico interactivo con plotly
     fig = px.line(df_maximos, x="año", y="maximo_anual", color="contaminante", markers=True,
                 hover_data={"fecha_maximo": True, "maximo_anual": ":.2f", "año": True},
                 title=f"Máximos Anuales por Contaminante - {estacion}",
@@ -240,9 +241,10 @@ def evolucion_maximos_interactivo(df_diario, contaminantes, estacion):
     return fig
 
 
-def graficar_medias_diarias_interactivo(df_filtrado, contaminante_seleccionado, estacion_seleccionada, fecha_inicio, fecha_fin):
+def graficar_medias_diarias_interactivo(df_filtrado, contaminantes, estacion_seleccionada, fecha_inicio, fecha_fin):
     """
-    Genera un gráfico interactivo de las medias diarias de un contaminante en una estación específica.
+    Genera un gráfico interactivo de las medias diarias de los contaminantes medidos en una estación específica
+    y en un rango de fechas determinado
 
     Args:
         df_filtrado (pl.DataFrame): DataFrame con los datos filtrados por estación y contaminante.
@@ -256,13 +258,12 @@ def graficar_medias_diarias_interactivo(df_filtrado, contaminante_seleccionado, 
     """
     # Crear gráfico interactivo con Plotly
     fig = px.line(
-        df_filtrado, x="fecha", y="media_diaria", markers=True,
-        title=f"Medias diarias de {contaminante_seleccionado} en {estacion_seleccionada} ({fecha_inicio} - {fecha_fin})",
+        df_filtrado, x="fecha", y="media_diaria", color= "contaminante", markers=True,
+        title=f"Medias diarias en {estacion_seleccionada} ({fecha_inicio} - {fecha_fin})",
         labels={"media_diaria": "Media Diaria", "fecha": "Fecha"},
         hover_data={"media_diaria": ":.2f", "fecha": True}
     )
 
-    # Configurar diseño
     # Rotamos las etiquetas del eje x
     fig.update_layout(xaxis_tickangle=-45)
     

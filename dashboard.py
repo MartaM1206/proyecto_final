@@ -42,7 +42,8 @@ num_contaminantes = len(contaminantes)
 num_anios = len(anios)  
 estaciones_trafico = madrid.filter(pl.col("tipo_estacion") =="Tráfico")["estacion"].unique().to_list()
 estaciones_fondo = madrid.filter(pl.col("tipo_estacion") =="Fondo")["estacion"].unique().to_list()
-contaminantes_filtrados = madrid.filter(pl.col("contaminante").str.contains("nitrógeno"))["contaminante"].unique().to_list()
+contaminantes_nitro = madrid.filter(pl.col("contaminante").str.contains("nitrógeno"))["contaminante"].unique().to_list()
+contaminantes_filtrados =["Ozono"] + contaminantes_nitro
 estaciones_verdes = ["Parque del Retiro", "Juan Carlos I", "Casa de Campo", "El Pardo"]
 estaciones_fondo_urbanas = [estacion for estacion in estaciones_fondo if estacion not in estaciones_verdes]
 
@@ -210,8 +211,8 @@ if opcion == "Análisis Detallado":
 
     # Inicializar valores en session_state si no existen
    
-    if "contaminante_seleccionado" not in st.session_state:
-        st.session_state.contaminante_seleccionado = contaminantes_filtrados[0]
+    #if "contaminante_seleccionado" not in st.session_state:
+        #st.session_state.contaminante_seleccionado = contaminantes[0]
 
     if "estacion_seleccionada" not in st.session_state:
         st.session_state.estacion_seleccionada = estaciones[0]    
@@ -223,8 +224,8 @@ if opcion == "Análisis Detallado":
         st.session_state.fecha_fin = pd.to_datetime("2024-01-31").date()
 
     # Funciones para actualizar session_state
-    def actualizar_contaminante():
-        st.session_state.contaminante_seleccionado = st.session_state.contaminante_key
+    #def actualizar_contaminante():
+        #st.session_state.contaminante_seleccionado = st.session_state.contaminante_key
     def actualizar_estacion():
         st.session_state.estacion_seleccionada = st.session_state.estacion_key
     def actualizar_fecha_inicio():
@@ -232,9 +233,9 @@ if opcion == "Análisis Detallado":
     def actualizar_fecha_fin():
         st.session_state.fecha_fin = st.session_state.fecha_fin_key
     # Selectores de filtros
-    contaminante_seleccionado = st.selectbox("Selecciona un contaminante", contaminantes_filtrados, 
-                                            index = contaminantes_filtrados.index(st.session_state.contaminante_seleccionado),
-                                            key="contaminante_key", on_change = actualizar_contaminante)
+    #contaminante_seleccionado = st.selectbox("Selecciona un contaminante", contaminantes, 
+                                            #index = contaminantes.index(st.session_state.contaminante_seleccionado),
+                                            #key="contaminante_key", on_change = actualizar_contaminante)
     estacion_seleccionada = st.selectbox("Selecciona una estación", estaciones, 
                                             index = estaciones.index(st.session_state.estacion_seleccionada),
                                             key="estacion_key", on_change = actualizar_estacion)
@@ -250,11 +251,10 @@ if opcion == "Análisis Detallado":
 
     # Filtrar datos por estación, contaminante y rango de fechas
     df_filtrado = df_diario.filter((pl.col("estacion") == st.session_state.estacion_seleccionada) & 
-                            (pl.col("contaminante") == st.session_state.contaminante_seleccionado) & 
                             (pl.col("fecha").is_between(st.session_state.fecha_inicio, st.session_state.fecha_fin, closed="both")))
 
 
-    fig = fdb.graficar_medias_diarias_interactivo(df_filtrado, contaminante_seleccionado, estacion_seleccionada, fecha_inicio, fecha_fin)
+    fig = fdb.graficar_medias_diarias_interactivo(df_filtrado, contaminantes, estacion_seleccionada, fecha_inicio, fecha_fin)
     st.plotly_chart(fig)
 
 

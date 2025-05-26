@@ -4,6 +4,7 @@ import math
 # Para visualizaciones
 import seaborn as sns 
 import matplotlib.pyplot as plt
+import plotly.express as px
 # Para gestión de fechas
 from datetime import datetime
 # Para conectar a la base de datos
@@ -115,21 +116,21 @@ def separar_datos(df):
         pl.col("hora_medida").dt.date().alias("fecha")
     ])
 
-    # Media mensual
+    # Extraemos df con las medias mensuales
     df_mensual = (
         df.group_by(["estacion", "contaminante", "mes", "año"])
         .agg(pl.col("valor").mean().round(2).alias("media_mensual"))
         .sort(["estacion", "contaminante", "año", "mes"])
     )
 
-    # Media diaria
+    # Extraemos df con las medias diarias
     df_diario = (
         df.group_by(["estacion", "contaminante", "fecha"])
         .agg(pl.col("valor").mean().round(2).alias("media_diaria"))
         .sort(["estacion", "contaminante", "fecha"])
     )
 
-    # Media anual
+    # Extraemos df con las medias anuales
     df_anual = (
         df.group_by(["estacion", "contaminante", "año"])
         .agg(pl.col("valor").mean().round(2).alias("media_anual"))
@@ -143,147 +144,128 @@ def separar_datos(df):
     return df_mensual, df_diario, df_anual, estaciones, contaminantes, anios
 
 
-
-
-def estaciones_anio(df_mensual, contaminantes, año_seleccionado, estaciones_seleccionadas):
+def estacion_anio_interactivo(df_mensual, contaminantes, año_seleccionado, estacion_seleccionada):
     """
-    Genera un gráfico de medias mensuales de contaminantes para una estación específica y un año seleccionado.
+    Genera un gráfico interactivo de medias mensuales de contaminantes para una estación específica y un año seleccionado.
 
     Args:
-        df_mensual: DataFrame con los datos mensuales.
-        contaminantes: Lista de contaminantes a graficar.
-        estacion_seleccionada: Estación seleccionada para el análisis.
-        año_seleccionado: Año a filtrar.
-    Returns: 
-        Figura de Matplotlib lista para visualizar en Streamlit.
+        df_mensual (pl.DataFrame): DataFrame con los datos mensuales.
+        contaminantes (list[str]): Lista de contaminantes a graficar.
+        año_seleccionado (int): Año a filtrar.
+        estacion_seleccionada (str): Estación seleccionada para el análisis.
+
+    Returns:
+        plotly.graph_objects.Figure: Gráfico interactivo de evolución de medias mensuales.
     """
-    # Crear diccionarios de colores y marcadores
-    cmap = plt.get_cmap("tab20", len(contaminantes))
-    colores_dict = {cont: cmap(i) for i, cont in enumerate(contaminantes)}
+    # Filtrar por año, estación y contaminantes seleccionados
+    df_filtrado = df_mensual.filter(
+        (pl.col("año") == año_seleccionado) &
+        (pl.col("estacion") == estacion_seleccionada) &
+        (pl.col("contaminante").is_in(contaminantes))
+    ).sort("mes")
 
-    marcadores_unicos = ['o', '^', 's', 'D', 'x', 'p', '*', 'h', '+', 'X', '|', '_', 'v', '<', '4']
-    marcadores_dict = {cont: marcadores_unicos[i % len(marcadores_unicos)] for i, cont in enumerate(contaminantes)}
+    # Crear gráfico interactivo con Plotly
+    fig = px.line(
+        df_filtrado, x="mes", y="media_mensual", color="contaminante", markers=True,
+        title=f"Medias Mensuales en {estacion_seleccionada} - {año_seleccionado}",
+        labels={"media_mensual": "Media Mensual", "mes": "Mes"},
+        hover_data={"media_mensual": ":.2f", "mes": True} # Para mostrar la media con 2 decimales y el mes en la etiqueta al pasar el cursor
+    )
 
-    # Filtrar por año y estación seleccionada
-    df_año = df_mensual.filter(pl.col("año") == año_seleccionado)
-    
+    # Rotamos las etiquetas del eje x
+    fig.update_layout(xaxis_tickangle=-45)
 
-    # Definir la cantidad de columnas y filas
-    num_cols =  1
-    num_rows = math.ceil(len(estaciones_seleccionadas)/num_cols)
-
-    fig, axes = plt.subplots(num_rows, num_cols, figsize=(12, 5), sharex=True, sharey=True)
-    axes = axes.flatten().tolist()
-
-    for j, estacion in enumerate(estaciones_seleccionadas):  
-        df_estacion = df_año.filter(pl.col("estacion") == estacion).sort("mes")
-        ax = axes[j]  
-
-        for contaminante in contaminantes:
-            df_contaminante = df_estacion.filter(pl.col("contaminante") == contaminante)
-            if df_contaminante.height > 0:
-                ax.plot(df_contaminante["mes"], df_contaminante["media_mensual"], 
-                        marker=marcadores_dict[contaminante], color=colores_dict[contaminante], label=contaminante)
-
-        ax.set_title(f"Estación {estacion} - Año {año_seleccionado}")
-        ax.set_ylabel("Media Mensual")
-        ax.set_xticks(df_contaminante["mes"].to_list())
-        ax.set_xticklabels(df_contaminante["mes"], rotation=45, ha="right")
-        ax.grid(True)
-        plt.tight_layout()
-    return fig
-    
-
-def graficar_contaminantes(df_mensual, contaminantes, estaciones, año_seleccionado):
-    """
-    Genera gráficos de medias mensuales de contaminantes por estación y año.
-
-    :param df_mensual: DataFrame con los datos mensuales.
-    :param contaminantes: Lista de contaminantes a graficar.
-    :param estaciones: Lista de estaciones.
-    :param año_seleccionado: Año a filtrar.
-    """
-    # Crear diccionarios de colores y marcadores
-    cmap = plt.get_cmap("tab20", len(contaminantes))
-    colores_dict = {cont: cmap(i) for i, cont in enumerate(contaminantes)}
-
-    marcadores_unicos = ['o', '^', 's', 'D', 'x', 'p', '*', 'h', '+', 'X', '|', '_', 'v', '<', '4']
-    marcadores_dict = {cont: marcadores_unicos[i % len(marcadores_unicos)] for i, cont in enumerate(contaminantes)}
-
-    # Filtrar por año seleccionado
-    df_año = df_mensual.filter(pl.col("año") == año_seleccionado)
-
-    # Definir la cantidad de columnas y filas
-    num_cols = 3  
-    num_rows = math.ceil(len(estaciones)/num_cols)# Solo una fila para el año seleccionado
-
-    fig, axes = plt.subplots(num_rows, num_cols, figsize=(12, 5), sharex=True, sharey=True)
-    axes = axes.flatten().tolist()
-
-    for j, estacion in enumerate(estaciones):  
-        df_estacion = df_año.filter(pl.col("estacion") == estacion).sort("mes")
-        ax = axes[j]  
-
-        for contaminante in contaminantes:
-            df_contaminante = df_estacion.filter(pl.col("contaminante") == contaminante)
-            if df_contaminante.height > 0:
-                ax.plot(df_contaminante["mes"], df_contaminante["media_mensual"], 
-                        marker=marcadores_dict[contaminante], color=colores_dict[contaminante], label=contaminante)
-
-        ax.set_title(f"Estación {estacion} - Año {año_seleccionado}")
-        ax.set_ylabel("Media Mensual")
-        ax.set_xticks(df_contaminante["mes"].to_list())
-        ax.set_xticklabels(df_contaminante["mes"], rotation=45, ha="right")
-        ax.grid(True)
-        plt.tight_layout()
     return fig
 
-def estacion_anio(df_mensual, contaminantes, año_seleccionado, estacion_seleccionada):
+
+def evolucion_anual_interactivo(df_anual, contaminantes, estacion):
     """
-    Genera un gráfico de medias mensuales de contaminantes para una estación específica y un año seleccionado.
+    Genera un gráfico interactivo de líneas que representa la evolución de las medias anuales
+    de los contaminantes en una estación específica.
 
     Args:
-        df_mensual: DataFrame con los datos mensuales.
-        contaminantes: Lista de contaminantes a graficar.
-        estacion_seleccionada: Estación seleccionada para el análisis.
-        año_seleccionado: Año a filtrar.
-    Returns: 
-        Figura de Matplotlib lista para visualizar en Streamlit.
+        df_anual (pl.DataFrame): DataFrame con medias anuales de contaminantes.
+        contaminantes (list[str]): Lista de contaminantes a graficar.
+        estacion (str): Nombre de la estación seleccionada.
+
+    Returns:
+        plotly.graph_objects.Figure: Gráfico interactivo con la evolución de medias anuales.
     """
-    # Crear diccionarios de colores y marcadores
-    cmap = plt.get_cmap("tab20", len(contaminantes))
-    colores_dict = {cont: cmap(i) for i, cont in enumerate(contaminantes)}
+    # Filtrar la estación seleccionada y los contaminantes requeridos
+    df_estacion = df_anual.filter((pl.col("estacion") == estacion) & (pl.col("contaminante").is_in(contaminantes))).sort("año")
 
-    marcadores_unicos = ['o', '^', 's', 'D', 'x', 'p', '*', 'h', '+', 'X', '|', '_', 'v', '<', '4']
-    marcadores_dict = {cont: marcadores_unicos[i % len(marcadores_unicos)] for i, cont in enumerate(contaminantes)}
+    # Crear gráfico interactivo con Plotly
+    fig = px.line(
+        df_estacion, x="año", y="media_anual", color="contaminante", markers=True,
+        title=f"Evolución de Medias Anuales - {estacion}",
+        labels={"media_anual": "Media Anual", "año": "Año"},
+        hover_data={"media_anual": ":.2f", "año": True}
+    )
+     # Rotamos las etiquetas del eje x
+    fig.update_layout(xaxis_tickangle=-45)
+    return fig
+        
 
-    # Filtrar por año y estación seleccionada
-    df_año = df_mensual.filter(pl.col("año") == año_seleccionado)
-    df_estacion = df_año.filter(pl.col("estacion") == estacion_seleccionada)
-
-    # Crear la figura
-    fig, ax = plt.subplots(figsize=(10, 6))
-
-    # Iterar sobre contaminantes y graficar cada uno
-    for contaminante in contaminantes:
-        df_contaminante = df_estacion.filter(pl.col("contaminante") == contaminante)
-        if df_contaminante.height > 0:
-            ax.plot(df_contaminante["mes"], df_contaminante["media_mensual"], 
-                    marker=marcadores_dict[contaminante], color=colores_dict[contaminante], label=contaminante)
-
-    # Configuración del gráfico
-    ax.set_title(f"Estación {estacion_seleccionada} - Año {año_seleccionado}")
-    ax.set_ylabel("Media Mensual")
-    ax.set_xticks(df_estacion["mes"].to_list())
-    ax.set_xticklabels(df_estacion["mes"], rotation=45, ha="right")
-    ax.grid(True)
+def evolucion_maximos_interactivo(df_diario, contaminantes, estacion):
+    """
+    Genera un gráfico interactivo de los valores máximos anuales de cada contaminante en la estación seleccionada.
     
-    # Leyenda
-    handles = [plt.Line2D([0], [0], marker=marcadores_dict[c], color=colores_dict[c], linestyle='None', markersize=8)
-               for c in contaminantes]
-    fig.legend(handles, contaminantes, loc="upper center", bbox_to_anchor=(0.5, -0.15), title="Contaminantes", frameon=True, ncol=4, fontsize=10)
+    Args:
+        df_diario (pl.DataFrame): DataFrame con datos diarios de contaminación.
+        contaminantes (list[str]): Lista de contaminantes a graficar.
+        estacion (str): Nombre de la estación seleccionada.
 
-    fig.suptitle(f"Comparación de Medias Mensuales - Estación {estacion_seleccionada} - Año {año_seleccionado}", fontsize=16, y=1.02)
-    plt.tight_layout()
+    Returns:
+        plotly.graph_objects.Figure: Gráfico interactivo de evolución de máximos anuales.
+        pl.DataFrame: DataFrame con las fechas de los máximos.
+    """
+    # Extraer el año de la columna 'fecha'
+    df_diario = df_diario.with_columns(pl.col("fecha").dt.year().alias("año"))
+
+    # Filtrar por estación y obtener los valores máximos por año y contaminante
+    df_maximos = df_diario.filter(
+        (pl.col("estacion") == estacion) & (pl.col("contaminante").is_in(contaminantes))
+    ).group_by(["año", "contaminante"]).agg(
+        pl.col("media_diaria").max().alias("maximo_anual"),
+        pl.col("fecha").filter(pl.col("media_diaria") == pl.col("media_diaria").max()).first().alias("fecha_maximo")
+    ).sort("año")
+    # Crear gráfico interactivo con Plotly
+    fig = px.line(df_maximos, x="año", y="maximo_anual", color="contaminante", markers=True,
+                hover_data={"fecha_maximo": True, "maximo_anual": ":.2f", "año": True},
+                title=f"Máximos Anuales por Contaminante - {estacion}",
+                labels={"maximo_anual": "Valor Máximo", "año": "Año", "fecha_maximo": "Fecha del Máximo"})
+
+     # Rotamos las etiquetas del eje x
+    fig.update_layout(xaxis_tickangle=-45)
+    return fig
+
+
+def graficar_medias_diarias_interactivo(df_filtrado, contaminante_seleccionado, estacion_seleccionada, fecha_inicio, fecha_fin):
+    """
+    Genera un gráfico interactivo de las medias diarias de un contaminante en una estación específica.
+
+    Args:
+        df_filtrado (pl.DataFrame): DataFrame con los datos filtrados por estación y contaminante.
+        contaminante_seleccionado (str): Contaminante a visualizar.
+        estacion_seleccionada (str): Nombre de la estación seleccionada.
+        fecha_inicio (str): Fecha de inicio del período.
+        fecha_fin (str): Fecha de fin del período.
+
+    Returns:
+        plotly.graph_objects.Figure: Gráfico interactivo de medias diarias.
+    """
+    # Crear gráfico interactivo con Plotly
+    fig = px.line(
+        df_filtrado, x="fecha", y="media_diaria", markers=True,
+        title=f"Medias diarias de {contaminante_seleccionado} en {estacion_seleccionada} ({fecha_inicio} - {fecha_fin})",
+        labels={"media_diaria": "Media Diaria", "fecha": "Fecha"},
+        hover_data={"media_diaria": ":.2f", "fecha": True}
+    )
+
+    # Configurar diseño
+    # Rotamos las etiquetas del eje x
+    fig.update_layout(xaxis_tickangle=-45)
     
-    return fig  # Devuelve la figura para su uso en Streamlit
+
+    return fig
+

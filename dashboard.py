@@ -42,14 +42,17 @@ num_contaminantes = len(contaminantes)
 num_anios = len(anios)  
 estaciones_trafico = madrid.filter(pl.col("tipo_estacion") =="Tráfico")["estacion"].unique().to_list()
 estaciones_fondo = madrid.filter(pl.col("tipo_estacion") =="Fondo")["estacion"].unique().to_list()
-
+contaminantes_filtrados = madrid.filter(pl.col("contaminante").str.contains("nitrógeno"))["contaminante"].unique().to_list()
+estaciones_verdes = ["Parque del Retiro", "Juan Carlos I", "Casa de Campo", "El Pardo"]
+estaciones_fondo_urbanas = [estacion for estacion in estaciones_fondo if estacion not in estaciones_verdes]
 
 # Sidebar para navegación
 st.sidebar.title("Menú de navegación")
-opcion = st.sidebar.radio("Selecciona una página", ["Inicio", "Gráficos por año", "Comparación de estaciones", "Comparación de años", "Filtros avanzados", "Conclusiones"])
+opcion = st.sidebar.radio("Selecciona una página", ["Sobre el Proyecto", "Análisis Anual por Estación", "Tráfico vs. Fondo", "Evolución por Estación", "Análisis Detallado", "Evolución Anual"])
 # Página principal
-if opcion == "Inicio":
+if opcion == "Sobre el Proyecto":
     st.title("Análisis de la contaminación en Madrid")
+    st.write("Introducción al análisis de la contaminación ambiental, incluyendo fuentes de datos y alcance del estudio.")
     # Configuramos la pagina de inicio en 3 secciones
     # Primera sección: Introduccióm
     with st.container():
@@ -80,10 +83,9 @@ if opcion == "Inicio":
 def actualizar_seleccion():
     st.session_state.estacion_seleccionada = st.session_state.estacion_key
 
-if opcion == "Gráficos por año":
-    st.title("Gráficos de estaciones por año")
-    st.write("Aquí puedes ver las medias mensuales de los contaminantes medidos en cada estación "
-             "de Madrid. Selecciona el año y la estación que quieras analizar")
+if opcion == "Análisis Anual por Estación":
+    st.title("Tendencias Anuales por Estación")
+    st.write("Visualización de las medias mensuales de contaminantes para una estación específica en un año determinado, con opciones de filtrado personalizadas.")
 
     # Inicializar valores en session_state si no existen
     if "anio_seleccionado" not in st.session_state:
@@ -104,11 +106,11 @@ if opcion == "Gráficos por año":
     st.write("Estación en session_state:", st.session_state.estacion_seleccionada)
 
     # Mostrar gráficos con valores correctos
-    st.pyplot(fdb.estacion_anio(df_mensual, contaminantes, st.session_state.anio_seleccionado, st.session_state.estacion_seleccionada))
+    st.plotly_chart(fdb.estacion_anio_interactivo(df_mensual, contaminantes, st.session_state.anio_seleccionado, st.session_state.estacion_seleccionada))
 
-if opcion == "Comparación de estaciones":
-    st.title("Comparación de estaciones de tráfico y fondo")
-    st.write("Selecciona un año y una estación de cada tipo para comparar sus valores de contaminación.")
+if opcion == "Tráfico vs. Fondo":
+    st.title("Doble Perspectiva: Comparando Estaciones")
+    st.write("Análisis comparativo de los niveles de contaminación entre una estación de tráfico y una estación de fondo en un año seleccionado.")
 
     # Inicializar valores en session_state si no existen
     if "anio_seleccionado" not in st.session_state:
@@ -138,17 +140,17 @@ if opcion == "Comparación de estaciones":
         st.subheader("Estaciones de tráfico")
         estacion_trafico = st.selectbox("Selecciona una estación de tráfico", estaciones_trafico, 
                                         index=estaciones_trafico.index(st.session_state.estacion_trafico), key="trafico_key", on_change=actualizar_trafico)
-        st.pyplot(fdb.estacion_anio(df_mensual, contaminantes, anio_seleccionado, st.session_state.estacion_trafico))
+        st.plotly_chart(fdb.estacion_anio_interactivo(df_mensual, contaminantes, anio_seleccionado, st.session_state.estacion_trafico))
 
     with col2:
         st.subheader("Estaciones de fondo")
         estacion_fondo = st.selectbox("Selecciona una estación de fondo", estaciones_fondo, 
                                       index=estaciones_fondo.index(st.session_state.estacion_fondo), key="fondo_key", on_change=actualizar_fondo)
-        st.pyplot(fdb.estacion_anio(df_mensual, contaminantes, anio_seleccionado, st.session_state.estacion_fondo))
+        st.plotly_chart(fdb.estacion_anio_interactivo(df_mensual, contaminantes, anio_seleccionado, st.session_state.estacion_fondo))
 
-if opcion == "Comparación de años":
-    st.title("Comparación de una estación en distintos años")
-    st.write("Selecciona una estación y los 3 años que quieras analizar.")
+if opcion == "Evolución por Estación":
+    st.title("Tres Años, Una Estación")
+    st.write("Evolución temporal de los contaminantes en una única estación, con datos de tres años seleccionados por el usuario para identificar tendencias.")
 
     # Inicializar valores en session_state si no existen
     if "estacion_seleccionada" not in st.session_state:
@@ -158,10 +160,10 @@ if opcion == "Comparación de años":
         st.session_state.anio1 = anios[0]
 
     if "anio2" not in st.session_state:
-        st.session_state.anio2 = anios[0]
+        st.session_state.anio2 = anios[1]
 
     if "anio3" not in st.session_state:
-        st.session_state.anio3 = anios[0]
+        st.session_state.anio3 = anios[2]
 
     # Funciones para actualizar session_state
     def actualizar_estacion():
@@ -188,23 +190,23 @@ if opcion == "Comparación de años":
     with col1:
         st.subheader("Año 1")
         anio1 = st.selectbox("Selecciona un año", anios, index=anios.index(st.session_state.anio1), key="anio1_key", on_change=actualizar_anio1)
-        st.pyplot(fdb.estacion_anio(df_mensual, contaminantes, st.session_state.anio1, st.session_state.estacion_seleccionada))
+        st.plotly_chart(fdb.estacion_anio_interactivo(df_mensual, contaminantes, st.session_state.anio1, st.session_state.estacion_seleccionada))
 
     with col2:
         st.subheader("Año 2")
         anio2 = st.selectbox("Selecciona un año", anios, index=anios.index(st.session_state.anio2), key="anio2_key", on_change=actualizar_anio2)
-        st.pyplot(fdb.estacion_anio(df_mensual, contaminantes, st.session_state.anio2, st.session_state.estacion_seleccionada))
+        st.plotly_chart(fdb.estacion_anio_interactivo(df_mensual, contaminantes, st.session_state.anio2, st.session_state.estacion_seleccionada))
 
     with col3:
         st.subheader("Año 3")
         anio3 = st.selectbox("Selecciona un año", anios, index=anios.index(st.session_state.anio3), key="anio3_key", on_change=actualizar_anio3)
-        st.pyplot(fdb.estacion_anio(df_mensual, contaminantes, st.session_state.anio3, st.session_state.estacion_seleccionada))
+        st.plotly_chart(fdb.estacion_anio_interactivo(df_mensual, contaminantes, st.session_state.anio3, st.session_state.estacion_seleccionada))
 
-if opcion == "Filtros avanzados":
-    st.title("Filtros avanzados")
-    st.write("Aquí puedes ver las medias diarias por contaminante en la estación y el rango de fechas elegidas")
+if opcion == "Análisis Detallado":
+    st.title("Análisis Personalizado de Contaminantes")
+    st.write("Análisis detallado de los contaminantes comunes en una estación específica, con opción de filtro por fecha y visualización de medias diarias.")
     # Filtramos solo los contaminantes de nitrógeno porque son los que aparecen en todas las estaciones
-    contaminantes_filtrados = df_diario.filter(pl.col("contaminante").str.contains("nitrógeno"))["contaminante"].unique().to_list()
+
 
     # Inicializar valores en session_state si no existen
    
@@ -252,23 +254,99 @@ if opcion == "Filtros avanzados":
                             (pl.col("fecha").is_between(st.session_state.fecha_inicio, st.session_state.fecha_fin, closed="both")))
 
 
-    # Graficar las medias diarias
-    fig, ax = plt.subplots()
-    ax.plot(df_filtrado["fecha"], df_filtrado["media_diaria"], marker="o", linestyle="-")
-    ax.set_title(f"Medias diarias de {contaminante_seleccionado} en {estacion_seleccionada} entre {fecha_inicio} y {fecha_fin}")
-    ax.set_xlabel("Fecha")
-    ax.set_ylabel("Media diaria")
-    ax.grid(True)
-    plt.xticks(rotation=45)
-
-    # Mostrar gráfico en Streamlit
-    st.pyplot(fig)
+    fig = fdb.graficar_medias_diarias_interactivo(df_filtrado, contaminante_seleccionado, estacion_seleccionada, fecha_inicio, fecha_fin)
+    st.plotly_chart(fig)
 
 
+if opcion == "Evolución Anual":
+    st.title("Máximos, Mínimos y Tendencias en el Tiempo")
+    st.write("Evaluación de la variabilidad anual de los niveles de contaminación, incluyendo análisis de tendencias, máximos y mínimos registrados en diferentes períodos.")
 
 
-  
-    
+    # Evaluación anual
+    with st.container():
+        st.subheader("Evolución anual por estación")
+        
+        # Funciones para actualizar session_state
+        def actualizar_trafico():
+            st.session_state.estacion_trafico = st.session_state.trafico_key
+
+        def actualizar_fondo():
+            st.session_state.estacion_fondo = st.session_state.fondo_key
+        
+        def actualizar_verde():
+            st.session_state.estacion_verde = st.session_state.verde_key
+       # Inicializar valores en session_state si no existen
+        if "estacion_verde" not in st.session_state:
+            st.session_state.estacion_verde = estaciones_verdes[0]
+
+        if "estacion_trafico" not in st.session_state:
+            st.session_state.estacion_trafico = estaciones_trafico[0]
+
+        if "estacion_fondo" not in st.session_state:
+            st.session_state.estacion_fondo = estaciones_fondo_urbanas[0]
+        # Crear tres columnas
+        col1, col2, col3 = st.columns(3)
+
+        with col1:
+            st.subheader("Estaciones de tráfico")
+            estacion_trafico = st.selectbox("Selecciona una estación de tráfico", estaciones_trafico, 
+                                            index=estaciones_trafico.index(st.session_state.estacion_trafico), key="trafico_key", on_change=actualizar_trafico)
+            st.plotly_chart(fdb.evolucion_anual_interactivo(df_anual, contaminantes_filtrados, st.session_state.estacion_trafico))
+
+        with col2:
+            st.subheader("Estaciones de fondo")
+            estacion_fondo = st.selectbox("Selecciona una estación de fondo", estaciones_fondo_urbanas, 
+                                        index=estaciones_fondo_urbanas.index(st.session_state.estacion_fondo), key="fondo_key", on_change=actualizar_fondo)
+            st.plotly_chart(fdb.evolucion_anual_interactivo(df_anual, contaminantes_filtrados, st.session_state.estacion_fondo))
+
+        with col3:
+            st.subheader("Estaciones de zonas verdes")
+            estacion_verde = st.selectbox("Selecciona una estación de zona verde", estaciones_verdes, 
+                                        index=estaciones_verdes.index(st.session_state.estacion_verde), key="verde_key", on_change=actualizar_verde)
+            st.plotly_chart(fdb.evolucion_anual_interactivo(df_anual, contaminantes_filtrados, st.session_state.estacion_verde))
+
+     # Evaluación máximos
+    with st.container():
+        st.subheader("Evolución de máximos anuales por estación")
+        # Funciones para actualizar session_state
+        def actualizar_trafico_max():
+            st.session_state.estacion_trafico_max = st.session_state.trafico_max_key
+
+        def actualizar_fondo_max():
+            st.session_state.estacion_fondo_max = st.session_state.fondo_max_key
+        
+        def actualizar_verde_max():
+            st.session_state.estacion_verde_max = st.session_state.verde_max_key
+       # Inicializar valores en session_state si no existen
+        if "estacion_verde_max" not in st.session_state:
+            st.session_state.estacion_verde_max = estaciones_verdes[0]
+
+        if "estacion_trafico_max" not in st.session_state:
+            st.session_state.estacion_trafico_max = estaciones_trafico[0]
+
+        if "estacion_fondo_max" not in st.session_state:
+            st.session_state.estacion_fondo_max = estaciones_fondo_urbanas[0]
+        # Crear tres columnas
+        col1, col2, col3 = st.columns(3)
+
+        with col1:
+            st.subheader("Estaciones de tráfico")
+            estacion_trafico_max = st.selectbox("Selecciona una estación de tráfico", estaciones_trafico, 
+                                            index=estaciones_trafico.index(st.session_state.estacion_trafico_max), key="trafico_max_key", on_change=actualizar_trafico_max)
+            st.plotly_chart(fdb.evolucion_maximos_interactivo(df_diario, contaminantes_filtrados, st.session_state.estacion_trafico_max))
+
+        with col2:
+            st.subheader("Estaciones de fondo")
+            estacion_fondo_max = st.selectbox("Selecciona una estación de fondo", estaciones_fondo_urbanas, 
+                                        index=estaciones_fondo_urbanas.index(st.session_state.estacion_fondo_max), key="fondo_max_key", on_change=actualizar_fondo_max)
+            st.plotly_chart(fdb.evolucion_maximos_interactivo(df_diario, contaminantes_filtrados, st.session_state.estacion_fondo_max))
+
+        with col3:
+            st.subheader("Estaciones de zonas verdes")
+            estacion_verde = st.selectbox("Selecciona una estación de zona verde", estaciones_verdes, 
+                                        index=estaciones_verdes.index(st.session_state.estacion_verde_max), key="verde_max_key", on_change=actualizar_verde_max)
+            st.plotly_chart(fdb.evolucion_maximos_interactivo(df_diario, contaminantes_filtrados, st.session_state.estacion_verde_max))   
     
 
 

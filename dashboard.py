@@ -71,7 +71,7 @@ if opcion == "Sobre el Proyecto":
     with st.container():
         st.subheader("📊 Los datos")
         st.write("Datos horarios de estaciones de calidad del aire desde 2001")
-        st.write("API del Ayuntamiento de Madrid.")
+        st.write("APIs públicas -> ETL -> base de datos.")
 
     # Tercera sección: Extensión del análisis
     with st.container():
@@ -133,6 +133,9 @@ if opcion == "Análisis Detallado":
     with st.container():
         st.subheader("Valores mensuales por estación")
     # Usamos session_state para evitar que los valores seleccionados se pierdan al recargar la página
+        # Funciones para actualizar session_state
+    def actualizar_estacion_mes():
+        st.session_state.estacion_seleccionada_mes = st.session_state.estacion_mes_key
     # Inicializar valores en session_state si no existen
     if "estacion_seleccionada_mes" not in st.session_state:
         st.session_state.estacion_seleccionada_mes = estaciones[0]
@@ -146,7 +149,7 @@ if opcion == "Análisis Detallado":
     # Selector de estación
     estacion_seleccionada_mes = st.selectbox("Selecciona una estación", estaciones,
                                             index=estaciones.index(st.session_state.estacion_seleccionada_mes),
-                                            key="estacion_mes_key")
+                                            key="estacion_mes_key", on_change = actualizar_estacion_mes)
 
     # Selector de rango de años
     año_inicio, año_fin = st.slider(
@@ -232,7 +235,7 @@ if opcion == "Análisis Detallado":
 
 
 # Configuramos la página de evolución anual
-if opcion == "Evolución anual":
+if opcion == "Evolución Anual":
     st.title("Tendencias en el tiempo")
     st.write("Evaluación de la variabilidad anual de los niveles de contaminación, incluyendo análisis de tendencias y máximos registrados en diferentes períodos.")
 
